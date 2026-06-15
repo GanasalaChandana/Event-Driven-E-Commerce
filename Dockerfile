@@ -1,0 +1,40 @@
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+
+# Which module to build — set via Railway build variable SERVICE_NAME
+ARG SERVICE_NAME
+WORKDIR /app
+
+# Copy parent POM + all child POMs first (enables Docker layer caching)
+COPY pom.xml .
+COPY eureka-server/pom.xml      eureka-server/
+COPY api-gateway/pom.xml        api-gateway/
+COPY user-service/pom.xml       user-service/
+COPY product-service/pom.xml    product-service/
+COPY order-service/pom.xml      order-service/
+COPY inventory-service/pom.xml  inventory-service/
+COPY notification-service/pom.xml notification-service/
+
+# Download dependencies (cached unless POMs change)
+RUN mvn -pl ${SERVICE_NAME} --also-make \
+    dependency:go-offline -q 2>&1 | tail -3 || true
+
+# Copy full source and build the target service
+COPY . .
+RUN mvn -pl ${SERVICE_NAME} --also-make \
+    package -DskipTests -q
+
+# ── Stage 2: Run ──────────────────────────────────────────────────────────────
+FROM eclipse-temurin:17-jre-alpine
+
+ARG SERVICE_NAME
+WORKDIR /app
+
+COPY --from=build /app/${SERVICE_NAME}/target/*.jar app.jar
+
+# Railway injects $PORT; JVM container-aware memory settings
+EXPOSE 8080
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-jar", "app.jar"]
