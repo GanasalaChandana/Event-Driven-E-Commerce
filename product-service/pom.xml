@@ -37,6 +37,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <version>42.7.7</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -50,6 +51,7 @@
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
+            <version>3.3.5</version>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
