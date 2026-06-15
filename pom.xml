@@ -35,6 +35,9 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <lombok.version>1.18.32</lombok.version>
         <flyway.version>10.12.0</flyway.version>
+        <!-- Security: pin to patched versions -->
+        <postgresql.version>42.7.7</postgresql.version>
+        <spring-kafka.version>3.3.5</spring-kafka.version>
     </properties>
 
     <dependencyManagement>
