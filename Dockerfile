@@ -1,8 +1,8 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 FROM maven:3.9-eclipse-temurin-17-alpine AS build
 
-# Which module to build — set via Railway build variable SERVICE_NAME
-ARG SERVICE_NAME
+# Which module to build — set via Railway: Service → Settings → Build → Build Arguments
+ARG SERVICE_NAME=eureka-server
 WORKDIR /app
 
 # Copy parent POM + all child POMs first (enables Docker layer caching)
@@ -27,7 +27,7 @@ RUN mvn -pl ${SERVICE_NAME} --also-make \
 # ── Stage 2: Run ──────────────────────────────────────────────────────────────
 FROM eclipse-temurin:17-jre-alpine
 
-ARG SERVICE_NAME
+ARG SERVICE_NAME=eureka-server
 WORKDIR /app
 
 COPY --from=build /app/${SERVICE_NAME}/target/*.jar app.jar
