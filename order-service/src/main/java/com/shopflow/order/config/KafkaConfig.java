@@ -1,7 +1,5 @@
 package com.shopflow.order.config;
 
-import com.shopflow.order.event.InventoryFailedEvent;
-import com.shopflow.order.event.InventoryReservedEvent;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
