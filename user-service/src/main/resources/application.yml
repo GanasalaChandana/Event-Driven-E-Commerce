@@ -28,6 +28,10 @@ spring:
       properties:
         spring.json.add.type.headers: false
 
+kafka:
+  topics:
+    user-registered: user.registered
+
 jwt:
   secret: ${JWT_SECRET:shopflow-super-secret-key-change-in-production-min-256-bits}
   expiration-ms: 86400000   # 24 hours
