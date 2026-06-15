@@ -1,0 +1,85 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # ── User Service ──────────────────────────────────────────────────
+        - id: user-service-public
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/auth/**
+          # No auth filter — login/register are public
+
+        - id: user-service-protected
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - AuthFilter
+
+        # ── Product Service ───────────────────────────────────────────────
+        - id: product-service-public
+          uri: lb://product-service
+          predicates:
+            - Path=/api/v1/products/**
+            - Method=GET
+          # GET products are public (no auth needed to browse)
+
+        - id: product-service-protected
+          uri: lb://product-service
+          predicates:
+            - Path=/api/v1/products/**
+          filters:
+            - AuthFilter
+
+        # ── Order Service ─────────────────────────────────────────────────
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - AuthFilter
+
+        # ── Inventory Service ─────────────────────────────────────────────
+        - id: inventory-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/v1/inventory/**
+          filters:
+            - AuthFilter
+
+# JWT secret — must match user-service secret
+jwt:
+  secret: ${JWT_SECRET:shopflow-super-secret-key-change-in-production-min-256-bits}
+
+# Public paths that bypass the AuthFilter
+gateway:
+  public-paths:
+    - /api/v1/auth/register
+    - /api/v1/auth/login
+    - /api/v1/products
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway

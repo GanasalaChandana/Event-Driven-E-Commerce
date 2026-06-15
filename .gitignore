@@ -1,0 +1,34 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables — NEVER commit these
+.env
+*.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Spring Boot
+spring-shell.log

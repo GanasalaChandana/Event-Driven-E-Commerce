@@ -1,0 +1,50 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/users_db
+    username: shopflow
+    password: shopflow123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema, Hibernate only validates
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+jwt:
+  secret: ${JWT_SECRET:shopflow-super-secret-key-change-in-production-min-256-bits}
+  expiration-ms: 86400000   # 24 hours
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+  endpoints:
+    web:
+      exposure:
+        include: health, info

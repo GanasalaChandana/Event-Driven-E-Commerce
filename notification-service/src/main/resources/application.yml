@@ -1,0 +1,51 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: notification-service
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: 587
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notification-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.shopflow.*"
+
+kafka:
+  topics:
+    order-confirmed: order.confirmed
+    order-cancelled: order.cancelled
+
+notification:
+  from-email: ${MAIL_USERNAME:noreply@shopflow.com}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+  endpoints:
+    web:
+      exposure:
+        include: health, info

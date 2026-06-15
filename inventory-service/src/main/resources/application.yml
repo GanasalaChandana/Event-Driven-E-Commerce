@@ -1,0 +1,66 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: inventory-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/inventory_db
+    username: shopflow
+    password: shopflow123
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # Stock cache TTL in seconds (10 minutes)
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: inventory-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.shopflow.*"
+
+inventory:
+  stock:
+    cache-ttl-seconds: 600
+
+kafka:
+  topics:
+    order-created: order.created
+    inventory-reserved: inventory.reserved
+    inventory-failed: inventory.failed
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+  endpoints:
+    web:
+      exposure:
+        include: health, info
