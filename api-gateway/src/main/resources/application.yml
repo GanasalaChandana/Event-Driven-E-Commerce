@@ -40,6 +40,12 @@ spring:
           filters:
             - AuthFilter
 
+        # ── Category Service (public — part of product-service) ───────────
+        - id: category-service-public
+          uri: lb://product-service
+          predicates:
+            - Path=/api/v1/categories/**
+
         # ── Order Service ─────────────────────────────────────────────────
         - id: order-service
           uri: lb://order-service
@@ -63,9 +69,10 @@ jwt:
 # Public paths that bypass the AuthFilter
 gateway:
   public-paths:
-    - /api/v1/auth/register
-    - /api/v1/auth/login
+    - /api/v1/auth/
     - /api/v1/products
+    - /api/v1/categories
+    - /actuator
 
 eureka:
   client:
