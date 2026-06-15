@@ -29,6 +29,7 @@ kafka:
   topics:
     order-confirmed: order.confirmed
     order-cancelled: order.cancelled
+    user-registered: user.registered
 
 notification:
   from-email: ${MAIL_USERNAME:noreply@shopflow.com}
