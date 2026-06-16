@@ -6,10 +6,24 @@ import com.shopflow.product.ProductServiceApplication;
 import com.shopflow.user.UserServiceApplication;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
+@EntityScan(basePackages = {
+    "com.shopflow.user",
+    "com.shopflow.product",
+    "com.shopflow.order",
+    "com.shopflow.inventory"
+})
+@EnableJpaRepositories(basePackages = {
+    "com.shopflow.user",
+    "com.shopflow.product",
+    "com.shopflow.order",
+    "com.shopflow.inventory"
+})
 @ComponentScan(
     basePackages = {
         "com.shopflow.user",
