@@ -1,0 +1,37 @@
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+
+WORKDIR /app
+
+# Copy parent POM + all child POMs first (enables Docker layer caching)
+COPY pom.xml .
+COPY eureka-server/pom.xml        eureka-server/
+COPY api-gateway/pom.xml          api-gateway/
+COPY user-service/pom.xml         user-service/
+COPY product-service/pom.xml      product-service/
+COPY order-service/pom.xml        order-service/
+COPY inventory-service/pom.xml    inventory-service/
+COPY notification-service/pom.xml notification-service/
+COPY shopflow-monolith/pom.xml    shopflow-monolith/
+
+# Download dependencies (cached unless POMs change)
+RUN mvn -pl shopflow-monolith --also-make \
+    dependency:go-offline -q 2>&1 | tail -3 || true
+
+# Copy full source and build the monolith
+COPY . .
+RUN mvn -pl shopflow-monolith --also-make \
+    package -DskipTests -q
+
+# ── Stage 2: Run ──────────────────────────────────────────────────────────────
+FROM eclipse-temurin:17-jre-alpine
+
+WORKDIR /app
+
+COPY --from=build /app/shopflow-monolith/target/*.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-jar", "app.jar"]
