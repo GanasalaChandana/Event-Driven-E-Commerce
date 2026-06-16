@@ -17,6 +17,8 @@ spring:
             enable: true
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    admin:
+      fail-fast: false
     consumer:
       group-id: notification-service-group
       auto-offset-reset: earliest
