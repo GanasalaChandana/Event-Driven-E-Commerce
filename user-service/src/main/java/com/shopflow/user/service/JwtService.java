@@ -40,6 +40,10 @@ public class JwtService {
                 && !parseClaims(token).getExpiration().before(new Date());
     }
 
+    public Claims extractAllClaims(String token) {
+        return parseClaims(token);
+    }
+
     private Claims parseClaims(String token) {
         return Jwts.parser()
                 .verifyWith(signingKey())

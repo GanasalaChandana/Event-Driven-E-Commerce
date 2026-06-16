@@ -87,6 +87,7 @@ public class AuthService {
     private String generateToken(User user) {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         return jwtService.generateToken(userDetails, Map.of(
+                "userId", user.getId().toString(),
                 "email", user.getEmail(),
                 "role", user.getRole().name(),
                 "name", user.getName()
