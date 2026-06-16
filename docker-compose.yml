@@ -1,105 +1,204 @@
 services:
 
-  # ─── PostgreSQL (single instance, 4 databases) ───────────────────────────
+  # ── Infrastructure ─────────────────────────────────────────────────────────
+
   postgres:
     image: postgres:16-alpine
-    container_name: shopflow-postgres
     environment:
       POSTGRES_USER: shopflow
       POSTGRES_PASSWORD: shopflow123
-      POSTGRES_DB: users_db
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    networks:
-      - shopflow-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U shopflow"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
-  # ─── Redis (inventory stock cache) ───────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: shopflow-redis
-    ports:
-      - "6379:6379"
+    command: redis-server --requirepass shopflow123
     volumes:
-      - redis_data:/data
-    networks:
-      - shopflow-net
+      - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "shopflow123", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
-  # ─── Zookeeper (Kafka dependency) ────────────────────────────────────────
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
-    container_name: shopflow-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - shopflow-net
-
-  # ─── Kafka ───────────────────────────────────────────────────────────────
   kafka:
-    image: confluentinc/cp-kafka:7.6.1
-    container_name: shopflow-kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-      - "29092:29092"
+    image: apache/kafka:latest
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    networks:
-      - shopflow-net
+      CLUSTER_ID: shopflow-kafka-cluster-001
+    volumes:
+      - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
-      interval: 30s
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 15s
       timeout: 10s
-      retries: 5
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
 
-  # ─── Zipkin (distributed tracing UI) ─────────────────────────────────────
-  zipkin:
-    image: openzipkin/zipkin:3
-    container_name: shopflow-zipkin
-    ports:
-      - "9411:9411"
-    networks:
-      - shopflow-net
+  # ── Eureka Server ──────────────────────────────────────────────────────────
 
-  # ─── Kafka UI (browse topics/messages easily) ─────────────────────────────
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: shopflow-kafka-ui
-    depends_on:
-      - kafka
-    ports:
-      - "8090:8080"
+  eureka-server:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: eureka-server
     environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-    networks:
-      - shopflow-net
+      PORT: 8761
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  # ── Microservices ──────────────────────────────────────────────────────────
+
+  user-service:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: user-service
+    environment:
+      PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/users_db
+      SPRING_DATASOURCE_USERNAME: shopflow
+      SPRING_DATASOURCE_PASSWORD: shopflow123
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET: ${JWT_SECRET:-shopflow-super-secret-key-change-in-production-min-256-bits}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  product-service:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: product-service
+    environment:
+      PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/products_db
+      SPRING_DATASOURCE_USERNAME: shopflow
+      SPRING_DATASOURCE_PASSWORD: shopflow123
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: order-service
+    environment:
+      PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/orders_db
+      SPRING_DATASOURCE_USERNAME: shopflow
+      SPRING_DATASOURCE_PASSWORD: shopflow123
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  inventory-service:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: inventory-service
+    environment:
+      PORT: 8084
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/inventory_db
+      SPRING_DATASOURCE_USERNAME: shopflow
+      SPRING_DATASOURCE_PASSWORD: shopflow123
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: shopflow123
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: notification-service
+    environment:
+      PORT: 8085
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    depends_on:
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: api-gateway
+    environment:
+      PORT: 8080
+      JWT_SECRET: ${JWT_SECRET:-shopflow-super-secret-key-change-in-production-min-256-bits}
+      EUREKA_URL: http://eureka-server:8761/eureka/
+    ports:
+      - "8080:8080"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
-
-networks:
-  shopflow-net:
-    driver: bridge
+  postgres-data:
+  redis-data:
+  kafka-data:
