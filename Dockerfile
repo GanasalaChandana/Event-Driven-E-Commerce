@@ -7,13 +7,14 @@ WORKDIR /app
 
 # Copy parent POM + all child POMs first (enables Docker layer caching)
 COPY pom.xml .
-COPY eureka-server/pom.xml      eureka-server/
-COPY api-gateway/pom.xml        api-gateway/
-COPY user-service/pom.xml       user-service/
-COPY product-service/pom.xml    product-service/
-COPY order-service/pom.xml      order-service/
-COPY inventory-service/pom.xml  inventory-service/
+COPY eureka-server/pom.xml        eureka-server/
+COPY api-gateway/pom.xml          api-gateway/
+COPY user-service/pom.xml         user-service/
+COPY product-service/pom.xml      product-service/
+COPY order-service/pom.xml        order-service/
+COPY inventory-service/pom.xml    inventory-service/
 COPY notification-service/pom.xml notification-service/
+COPY shopflow-monolith/pom.xml    shopflow-monolith/
 
 # Download dependencies (cached unless POMs change)
 RUN mvn -pl ${SERVICE_NAME} --also-make \

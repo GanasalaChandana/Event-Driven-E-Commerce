@@ -1,0 +1,68 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: shopflow
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/shopflow_db}
+    username: ${SPRING_DATASOURCE_USERNAME:shopflow}
+    password: ${SPRING_DATASOURCE_PASSWORD:shopflow123}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    admin:
+      fail-fast: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: shopflow-monolith-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.shopflow.*"
+
+jwt:
+  secret: ${JWT_SECRET:shopflow-super-secret-key-change-in-production-min-256-bits}
+  expiration-ms: 86400000
+
+kafka:
+  topics:
+    user-registered: user.registered
+    order-created: order.created
+    inventory-reserved: inventory.reserved
+    inventory-failed: inventory.failed
+    order-confirmed: order.confirmed
+    order-cancelled: order.cancelled
+
+inventory:
+  stock:
+    cache-ttl-seconds: 600
+
+eureka:
+  client:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
