@@ -54,7 +54,7 @@ public class AuthService {
         user = userRepository.save(user);
         log.info("User registered: {}", user.getEmail());
 
-        // Publish event so Notification Service can send a welcome email
+        // Publish event — fire and forget, ignore failures when Kafka is unavailable
         try {
             kafkaTemplate.send(userRegisteredTopic, user.getId().toString(),
                     UserRegisteredEvent.builder()
@@ -62,9 +62,12 @@ public class AuthService {
                             .name(user.getName())
                             .email(user.getEmail())
                             .registeredAt(LocalDateTime.now())
-                            .build());
+                            .build())
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) log.warn("Kafka unavailable, skipping user.registered event: {}", ex.getMessage());
+                    });
         } catch (Exception e) {
-            log.warn("Kafka unavailable, skipping user.registered event: {}", e.getMessage());
+            log.warn("Kafka send error: {}", e.getMessage());
         }
 
         String token = generateToken(user);
