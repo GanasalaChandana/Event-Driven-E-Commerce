@@ -24,7 +24,11 @@ import org.springframework.context.annotation.FilterType;
             UserServiceApplication.class,
             ProductServiceApplication.class,
             OrderServiceApplication.class,
-            InventoryServiceApplication.class
+            InventoryServiceApplication.class,
+            com.shopflow.user.config.SecurityConfig.class,
+            com.shopflow.product.config.SecurityConfig.class,
+            com.shopflow.order.config.SecurityConfig.class,
+            com.shopflow.inventory.config.SecurityConfig.class
         }
     )
 )
