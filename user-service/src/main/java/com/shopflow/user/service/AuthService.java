@@ -55,13 +55,17 @@ public class AuthService {
         log.info("User registered: {}", user.getEmail());
 
         // Publish event so Notification Service can send a welcome email
-        kafkaTemplate.send(userRegisteredTopic, user.getId().toString(),
-                UserRegisteredEvent.builder()
-                        .userId(user.getId())
-                        .name(user.getName())
-                        .email(user.getEmail())
-                        .registeredAt(LocalDateTime.now())
-                        .build());
+        try {
+            kafkaTemplate.send(userRegisteredTopic, user.getId().toString(),
+                    UserRegisteredEvent.builder()
+                            .userId(user.getId())
+                            .name(user.getName())
+                            .email(user.getEmail())
+                            .registeredAt(LocalDateTime.now())
+                            .build());
+        } catch (Exception e) {
+            log.warn("Kafka unavailable, skipping user.registered event: {}", e.getMessage());
+        }
 
         String token = generateToken(user);
         return new AuthResponse(token, UserResponse.from(user));

@@ -22,12 +22,20 @@ public class InventoryEventProducer {
     private String failedTopic;
 
     public void publishInventoryReserved(InventoryReservedEvent event) {
-        kafkaTemplate.send(reservedTopic, event.getOrderId().toString(), event);
-        log.info("Published inventory.reserved for order {}", event.getOrderId());
+        try {
+            kafkaTemplate.send(reservedTopic, event.getOrderId().toString(), event);
+            log.info("Published inventory.reserved for order {}", event.getOrderId());
+        } catch (Exception e) {
+            log.warn("Kafka unavailable, skipping inventory.reserved event: {}", e.getMessage());
+        }
     }
 
     public void publishInventoryFailed(InventoryFailedEvent event) {
-        kafkaTemplate.send(failedTopic, event.getOrderId().toString(), event);
-        log.info("Published inventory.failed for order {}", event.getOrderId());
+        try {
+            kafkaTemplate.send(failedTopic, event.getOrderId().toString(), event);
+            log.info("Published inventory.failed for order {}", event.getOrderId());
+        } catch (Exception e) {
+            log.warn("Kafka unavailable, skipping inventory.failed event: {}", e.getMessage());
+        }
     }
 }
