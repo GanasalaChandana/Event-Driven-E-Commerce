@@ -18,19 +18,21 @@ import org.springframework.context.annotation.FilterType;
         "com.shopflow.inventory",
         "com.shopflow.monolith"
     },
-    excludeFilters = @ComponentScan.Filter(
-        type = FilterType.ASSIGNABLE_TYPE,
-        classes = {
-            UserServiceApplication.class,
-            ProductServiceApplication.class,
-            OrderServiceApplication.class,
-            InventoryServiceApplication.class,
-            com.shopflow.user.config.SecurityConfig.class,
-            com.shopflow.product.config.SecurityConfig.class,
-            com.shopflow.order.config.SecurityConfig.class,
-            com.shopflow.inventory.config.SecurityConfig.class
-        }
-    )
+    excludeFilters = {
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = {
+                UserServiceApplication.class,
+                ProductServiceApplication.class,
+                OrderServiceApplication.class,
+                InventoryServiceApplication.class
+            }
+        ),
+        @ComponentScan.Filter(
+            type = FilterType.REGEX,
+            pattern = "com\\.shopflow\\.(user|product|order|inventory)\\.config\\.SecurityConfig"
+        )
+    }
 )
 public class MonolithApplication {
     public static void main(String[] args) {
