@@ -76,6 +76,13 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.shopflow.monolith.MonolithApplication</mainClass>
+                </configuration>
+            </plugin>
             <!-- Include source directories from all 4 business services -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
