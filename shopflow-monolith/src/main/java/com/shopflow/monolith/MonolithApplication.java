@@ -30,12 +30,18 @@ import org.springframework.context.annotation.FilterType;
         ),
         @ComponentScan.Filter(
             type = FilterType.REGEX,
-            pattern = "com\\.shopflow\\.(user|product|order|inventory)\\.config\\.SecurityConfig"
+            pattern = {
+                "com\\.shopflow\\.(user|product|order|inventory)\\.config\\.SecurityConfig",
+                "com\\.shopflow\\.(user|product|order|inventory)\\.config\\.KafkaConfig",
+                "com\\.shopflow\\.(user|product|order|inventory)\\.exception\\.GlobalExceptionHandler"
+            }
         )
     }
 )
 public class MonolithApplication {
     public static void main(String[] args) {
-        SpringApplication.run(MonolithApplication.class, args);
+        SpringApplication app = new SpringApplication(MonolithApplication.class);
+        app.setAllowBeanDefinitionOverriding(true);
+        app.run(args);
     }
 }
