@@ -72,6 +72,15 @@ eureka:
   client:
     enabled: false
 
+springdoc:
+  pre-loading-enabled: false
+  packages-to-scan: com.shopflow
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
 management:
   endpoints:
     web:
