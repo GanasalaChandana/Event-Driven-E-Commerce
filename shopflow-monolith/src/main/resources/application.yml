@@ -73,12 +73,12 @@ eureka:
     enabled: false
 
 springdoc:
-  pre-loading-enabled: false
+  api-docs:
+    enabled: false
   swagger-ui:
     path: /swagger-ui.html
+    url: /openapi.yaml
     tags-sorter: alpha
-  api-docs:
-    path: /v3/api-docs
 
 management:
   endpoints:

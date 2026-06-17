@@ -1,0 +1,393 @@
+openapi: 3.0.3
+info:
+  title: ShopFlow API
+  description: Event-driven e-commerce REST API — auth, products, inventory, and orders
+  version: 1.0.0
+  contact:
+    name: Chandana Ganasala
+    url: https://github.com/GanasalaChandana/Event-Driven-E-Commerce
+
+servers:
+  - url: https://event-driven-e-commerce.onrender.com
+    description: Production
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, example: Alice }
+        email: { type: string, format: email, example: alice@example.com }
+        password: { type: string, minLength: 6, example: secret123 }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: admin@shopflow.com }
+        password: { type: string, example: admin123 }
+
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        userId: { type: string, format: uuid }
+        email: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [USER, ADMIN] }
+
+    ProductRequest:
+      type: object
+      required: [name, price, sku]
+      properties:
+        name: { type: string, example: Wireless Headphones }
+        description: { type: string, example: Noise-cancelling headphones }
+        price: { type: number, format: double, example: 99.99 }
+        sku: { type: string, example: WH-001 }
+        categoryId: { type: string, format: uuid, nullable: true }
+
+    ProductResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        sku: { type: string }
+        categoryId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+
+    InventoryRequest:
+      type: object
+      required: [productId, productName, quantityToAdd]
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string, example: Wireless Headphones }
+        quantityToAdd: { type: integer, minimum: 1, example: 100 }
+
+    InventoryResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        productId: { type: string, format: uuid }
+        productName: { type: string }
+        quantity: { type: integer }
+        reservedQuantity: { type: integer }
+        availableQuantity: { type: integer }
+
+    OrderItemRequest:
+      type: object
+      required: [productId, productName, quantity, unitPrice]
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string, example: Wireless Headphones }
+        quantity: { type: integer, minimum: 1, example: 2 }
+        unitPrice: { type: number, example: 99.99 }
+
+    OrderRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemRequest'
+
+    OrderItemResponse:
+      type: object
+      properties:
+        productId: { type: string, format: uuid }
+        productName: { type: string }
+        quantity: { type: integer }
+        unitPrice: { type: number }
+        subtotal: { type: number }
+
+    OrderResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        userEmail: { type: string }
+        status: { type: string, enum: [PENDING, CONFIRMED, CANCELLED] }
+        totalAmount: { type: number }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemResponse'
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    PageOfOrders:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderResponse'
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        size: { type: integer }
+        number: { type: integer }
+
+    PageOfProducts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductResponse'
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        size: { type: integer }
+        number: { type: integer }
+
+    ProblemDetail:
+      type: object
+      properties:
+        status: { type: integer }
+        detail: { type: string }
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email already exists
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and get JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: admin@shopflow.com
+              password: admin123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+
+  /api/v1/products:
+    get:
+      tags: [Products]
+      summary: List all products (paginated)
+      security: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Search query
+        - name: categoryId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOfProducts'
+    post:
+      tags: [Products]
+      summary: Create a product (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '403':
+          description: Admin role required
+
+  /api/v1/products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Products]
+      summary: Update a product (ADMIN only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+    delete:
+      tags: [Products]
+      summary: Delete a product (ADMIN only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Deleted
+
+  /api/v1/inventory:
+    post:
+      tags: [Inventory]
+      summary: Add stock for a product (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryRequest'
+      responses:
+        '201':
+          description: Stock added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResponse'
+
+  /api/v1/inventory/{productId}:
+    get:
+      tags: [Inventory]
+      summary: Get stock level for a product
+      security: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Inventory info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResponse'
+        '404':
+          description: Not found
+
+  /api/v1/orders:
+    post:
+      tags: [Orders]
+      summary: Place a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+      responses:
+        '201':
+          description: Order placed (status PENDING → CONFIRMED in ~10s)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+    get:
+      tags: [Orders]
+      summary: Get my orders (paginated)
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Order list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageOfOrders'
+
+  /api/v1/orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get a specific order by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '404':
+          description: Not found
