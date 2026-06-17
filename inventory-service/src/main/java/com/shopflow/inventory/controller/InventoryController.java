@@ -6,6 +6,8 @@ import com.shopflow.inventory.service.InventoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -26,8 +28,9 @@ public class InventoryController {
     @PostMapping
     public ResponseEntity<InventoryResponse> addStock(
             @Valid @RequestBody InventoryRequest request,
-            @RequestHeader("X-User-Role") String role) {
-        if (!"ADMIN".equals(role)) {
+            Authentication auth) {
+        if (auth == null || auth.getAuthorities().stream()
+                .noneMatch(a -> a.equals(new SimpleGrantedAuthority("ROLE_ADMIN")))) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(inventoryService.addStock(request));

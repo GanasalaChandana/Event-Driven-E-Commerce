@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -48,8 +50,8 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<ProductResponse> create(
             @Valid @RequestBody ProductRequest request,
-            @RequestHeader("X-User-Role") String role) {
-        requireAdmin(role);
+            Authentication auth) {
+        requireAdmin(auth);
         return ResponseEntity.status(HttpStatus.CREATED).body(productService.create(request));
     }
 
@@ -57,22 +59,23 @@ public class ProductController {
     public ResponseEntity<ProductResponse> update(
             @PathVariable UUID id,
             @Valid @RequestBody ProductRequest request,
-            @RequestHeader("X-User-Role") String role) {
-        requireAdmin(role);
+            Authentication auth) {
+        requireAdmin(auth);
         return ResponseEntity.ok(productService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Role") String role) {
-        requireAdmin(role);
+            Authentication auth) {
+        requireAdmin(auth);
         productService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
-    private void requireAdmin(String role) {
-        if (!"ADMIN".equals(role)) {
+    private void requireAdmin(Authentication auth) {
+        if (auth == null || auth.getAuthorities().stream()
+                .noneMatch(a -> a.equals(new SimpleGrantedAuthority("ROLE_ADMIN")))) {
             throw new org.springframework.security.access.AccessDeniedException("Admin role required");
         }
     }
