@@ -6,11 +6,21 @@ import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @Configuration
 public class OpenApiConfig {
+
+    static {
+        SpringDocUtils.getConfig()
+                .addAnnotationsToIgnore(AuthenticationPrincipal.class)
+                .addRequestWrapperToIgnore(UserDetails.class, Authentication.class);
+    }
 
     @Bean
     public OpenAPI openAPI() {
