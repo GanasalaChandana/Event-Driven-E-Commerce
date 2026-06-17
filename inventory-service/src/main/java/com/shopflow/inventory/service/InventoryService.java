@@ -81,6 +81,41 @@ public class InventoryService {
                 .build());
     }
 
+    /**
+     * Sync path: called directly within the monolith JVM when Kafka is unavailable.
+     * Returns true if stock was reserved, false if insufficient.
+     */
+    @Transactional
+    public boolean reserveStockSync(UUID orderId, List<OrderCreatedEvent.OrderItemEvent> items) {
+        List<UUID> productIds = items.stream()
+                .map(OrderCreatedEvent.OrderItemEvent::getProductId)
+                .toList();
+
+        Map<UUID, Inventory> inventoryMap = inventoryRepository
+                .findAllByProductIdInWithLock(productIds)
+                .stream()
+                .collect(Collectors.toMap(Inventory::getProductId, Function.identity()));
+
+        for (OrderCreatedEvent.OrderItemEvent item : items) {
+            Inventory inv = inventoryMap.get(item.getProductId());
+            if (inv == null || inv.getAvailableQuantity() < item.getQuantity()) {
+                log.warn("Sync inventory check failed for order {}: insufficient stock for product {}",
+                        orderId, item.getProductId());
+                return false;
+            }
+        }
+
+        for (OrderCreatedEvent.OrderItemEvent item : items) {
+            Inventory inv = inventoryMap.get(item.getProductId());
+            inv.setReservedQuantity(inv.getReservedQuantity() + item.getQuantity());
+            inventoryRepository.save(inv);
+            cacheService.evict(item.getProductId());
+        }
+
+        log.info("Sync inventory reserved for order {}", orderId);
+        return true;
+    }
+
     public InventoryResponse getByProductId(UUID productId) {
         // Cache-aside: check Redis first
         Integer cached = cacheService.getStock(productId);

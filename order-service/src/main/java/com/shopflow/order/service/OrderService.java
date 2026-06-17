@@ -8,11 +8,13 @@ import com.shopflow.order.entity.OrderStatus;
 import com.shopflow.order.event.OrderCancelledEvent;
 import com.shopflow.order.event.OrderConfirmedEvent;
 import com.shopflow.order.event.OrderCreatedEvent;
+import com.shopflow.order.event.OrderPlacedApplicationEvent;
 import com.shopflow.order.exception.OrderNotFoundException;
 import com.shopflow.order.messaging.OrderEventProducer;
 import com.shopflow.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderEventProducer eventProducer;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public OrderResponse placeOrder(UUID userId, String userEmail, OrderRequest request) {
@@ -63,7 +66,12 @@ public class OrderService {
         Order saved = orderRepository.save(order);
         log.info("Order {} placed by user {} — PENDING", saved.getId(), userId);
 
-        // Publish to Kafka — Inventory Service will pick this up
+        // Publish Spring application event — picked up by SyncOrderFulfillmentService
+        // in the monolith for in-JVM confirmation when Kafka is unavailable
+        applicationEventPublisher.publishEvent(
+                new OrderPlacedApplicationEvent(this, saved.getId(), request));
+
+        // Publish to Kafka — Inventory Service will pick this up when Kafka is available
         eventProducer.publishOrderCreated(OrderCreatedEvent.builder()
                 .orderId(saved.getId())
                 .userId(userId)
