@@ -27,7 +27,7 @@ public class Order {
     private String userEmail;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "order_status", nullable = false)
+    @Column(columnDefinition = "VARCHAR(50)", nullable = false)
     private OrderStatus status;
 
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
