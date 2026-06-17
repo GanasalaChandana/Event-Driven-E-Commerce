@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
+public class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     ProblemDetail handleEmailExists(EmailAlreadyExistsException ex) {
