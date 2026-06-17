@@ -26,29 +26,26 @@ public class OrderEventProducer {
     private String orderCancelledTopic;
 
     public void publishOrderCreated(OrderCreatedEvent event) {
-        try {
-            kafkaTemplate.send(orderCreatedTopic, event.getOrderId().toString(), event);
-            log.info("Published order.created for order {}", event.getOrderId());
-        } catch (Exception e) {
-            log.warn("Kafka unavailable, skipping order.created event: {}", e.getMessage());
-        }
+        kafkaTemplate.send(orderCreatedTopic, event.getOrderId().toString(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) log.warn("Kafka unavailable, skipping order.created: {}", ex.getMessage());
+                    else log.info("Published order.created for order {}", event.getOrderId());
+                });
     }
 
     public void publishOrderConfirmed(OrderConfirmedEvent event) {
-        try {
-            kafkaTemplate.send(orderConfirmedTopic, event.getOrderId().toString(), event);
-            log.info("Published order.confirmed for order {}", event.getOrderId());
-        } catch (Exception e) {
-            log.warn("Kafka unavailable, skipping order.confirmed event: {}", e.getMessage());
-        }
+        kafkaTemplate.send(orderConfirmedTopic, event.getOrderId().toString(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) log.warn("Kafka unavailable, skipping order.confirmed: {}", ex.getMessage());
+                    else log.info("Published order.confirmed for order {}", event.getOrderId());
+                });
     }
 
     public void publishOrderCancelled(OrderCancelledEvent event) {
-        try {
-            kafkaTemplate.send(orderCancelledTopic, event.getOrderId().toString(), event);
-            log.info("Published order.cancelled for order {}", event.getOrderId());
-        } catch (Exception e) {
-            log.warn("Kafka unavailable, skipping order.cancelled event: {}", e.getMessage());
-        }
+        kafkaTemplate.send(orderCancelledTopic, event.getOrderId().toString(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) log.warn("Kafka unavailable, skipping order.cancelled: {}", ex.getMessage());
+                    else log.info("Published order.cancelled for order {}", event.getOrderId());
+                });
     }
 }
