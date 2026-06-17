@@ -74,12 +74,7 @@ eureka:
 
 springdoc:
   pre-loading-enabled: false
-  packages-to-scan: >
-    com.shopflow.user.controller,
-    com.shopflow.product.controller,
-    com.shopflow.order.controller,
-    com.shopflow.inventory.controller,
-    com.shopflow.monolith.controller
+  packages-to-scan: "com.shopflow.user.controller,com.shopflow.product.controller,com.shopflow.order.controller,com.shopflow.inventory.controller,com.shopflow.monolith.controller"
   swagger-ui:
     path: /swagger-ui.html
     tags-sorter: alpha
