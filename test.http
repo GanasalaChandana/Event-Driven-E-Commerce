@@ -57,7 +57,7 @@ Content-Type: application/json
 
 {
   "name": "Chandana",
-  "email": "chandanacherry869@gmail.com",
+  "email": "chandanaganasala11@gmail.com",
   "password": "test1234"
 }
 
@@ -142,6 +142,18 @@ Authorization: Bearer {{adminToken}}
 
 ### Get any order by ID (admin can see any user's order)
 GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/PASTE_ORDER_ID_HERE
+Authorization: Bearer {{adminToken}}
+
+###  ─────────────────────────────────────────────
+###  ADMIN — Users
+###  ─────────────────────────────────────────────
+
+### Get ALL users (paginated)
+GET https://event-driven-e-commerce.onrender.com/api/v1/admin/users
+Authorization: Bearer {{adminToken}}
+
+### Get user by ID (admin)
+GET https://event-driven-e-commerce.onrender.com/api/v1/admin/users/eb4d83de-9ab7-4d79-a432-75a7d7a14bb8
 Authorization: Bearer {{adminToken}}
 
 ###  ─────────────────────────────────────────────
