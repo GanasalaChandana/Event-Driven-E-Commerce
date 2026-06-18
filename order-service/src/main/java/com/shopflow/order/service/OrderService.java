@@ -155,13 +155,17 @@ public class OrderService {
         orderRepository.save(order);
         log.info("Order {} CANCELLED by user {}", orderId, userId);
 
-        eventProducer.publishOrderCancelled(OrderCancelledEvent.builder()
-                .orderId(order.getId())
-                .userId(order.getUserId())
-                .userEmail(order.getUserEmail())
-                .reason("Cancelled by customer")
-                .cancelledAt(LocalDateTime.now())
-                .build());
+        try {
+            eventProducer.publishOrderCancelled(OrderCancelledEvent.builder()
+                    .orderId(order.getId())
+                    .userId(order.getUserId())
+                    .userEmail(order.getUserEmail())
+                    .reason("Cancelled by customer")
+                    .cancelledAt(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("Kafka publish failed for cancelled order {}: {}", orderId, e.getMessage());
+        }
 
         applicationEventPublisher.publishEvent(
                 new OrderCancelledApplicationEvent(this, order.getId(), order.getUserEmail()));

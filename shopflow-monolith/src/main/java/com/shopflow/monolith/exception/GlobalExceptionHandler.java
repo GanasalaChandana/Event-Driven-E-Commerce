@@ -1,6 +1,7 @@
 package com.shopflow.monolith.exception;
 
 import com.shopflow.inventory.exception.InventoryNotFoundException;
+import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
 import com.shopflow.product.exception.DuplicateSkuException;
 import com.shopflow.product.exception.ProductNotFoundException;
@@ -44,6 +45,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(OrderNotFoundException.class)
     ProblemDetail handleOrderNotFound(OrderNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(OrderCancellationException.class)
+    ProblemDetail handleOrderCancellation(OrderCancellationException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(InventoryNotFoundException.class)
