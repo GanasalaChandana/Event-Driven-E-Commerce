@@ -138,4 +138,18 @@ public class OrderService {
                 .map(OrderResponse::from)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
     }
+
+    public Page<OrderResponse> getAllOrders(Pageable pageable) {
+        return orderRepository.findAll(pageable).map(OrderResponse::from);
+    }
+
+    public Page<OrderResponse> getAllOrdersByStatus(OrderStatus status, Pageable pageable) {
+        return orderRepository.findAllByStatus(status, pageable).map(OrderResponse::from);
+    }
+
+    public OrderResponse getOrderById(UUID orderId) {
+        return orderRepository.findById(orderId)
+                .map(OrderResponse::from)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
 }
