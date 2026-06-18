@@ -9,6 +9,8 @@ import com.shopflow.order.event.OrderCancelledEvent;
 import com.shopflow.order.event.OrderConfirmedEvent;
 import com.shopflow.order.event.OrderCreatedEvent;
 import com.shopflow.order.event.OrderPlacedApplicationEvent;
+import com.shopflow.order.event.OrderCancelledApplicationEvent;
+import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
 import com.shopflow.order.messaging.OrderEventProducer;
 import com.shopflow.order.repository.OrderRepository;
@@ -137,6 +139,34 @@ public class OrderService {
         return orderRepository.findByIdAndUserId(orderId, userId)
                 .map(OrderResponse::from)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+
+    @Transactional
+    public OrderResponse cancelMyOrder(UUID orderId, UUID userId) {
+        Order order = orderRepository.findByIdAndUserId(orderId, userId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new OrderCancellationException(orderId,
+                    "only PENDING orders can be cancelled (current status: " + order.getStatus() + ")");
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+        log.info("Order {} CANCELLED by user {}", orderId, userId);
+
+        eventProducer.publishOrderCancelled(OrderCancelledEvent.builder()
+                .orderId(order.getId())
+                .userId(order.getUserId())
+                .userEmail(order.getUserEmail())
+                .reason("Cancelled by customer")
+                .cancelledAt(LocalDateTime.now())
+                .build());
+
+        applicationEventPublisher.publishEvent(
+                new OrderCancelledApplicationEvent(this, order.getId(), order.getUserEmail()));
+
+        return OrderResponse.from(order);
     }
 
     public Page<OrderResponse> getAllOrders(Pageable pageable) {

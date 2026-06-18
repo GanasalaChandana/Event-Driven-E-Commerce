@@ -3,6 +3,7 @@ package com.shopflow.monolith.config;
 import com.shopflow.inventory.event.OrderCreatedEvent;
 import com.shopflow.inventory.service.InventoryService;
 import com.shopflow.order.dto.OrderRequest;
+import com.shopflow.order.event.OrderCancelledApplicationEvent;
 import com.shopflow.order.event.OrderPlacedApplicationEvent;
 import com.shopflow.order.service.OrderService;
 import com.shopflow.monolith.notification.EmailNotificationService;
@@ -57,5 +58,13 @@ public class SyncOrderFulfillmentService {
         } catch (Exception e) {
             log.error("Sync fulfillment failed for order {}: {}", orderId, e.getMessage());
         }
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onOrderCancelledByUser(OrderCancelledApplicationEvent event) {
+        log.info("Sending cancellation email for order {} cancelled by customer", event.getOrderId());
+        emailNotificationService.sendOrderCancellation(
+                event.getOrderId(), event.getUserEmail(), "Cancelled by customer");
     }
 }

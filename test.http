@@ -6,8 +6,12 @@ Content-Type: application/json
   "email": "admin@shopflow.com",
   "password": "admin123"
 }
-@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJ1c2VySWQiOiJmMzk2NDA5MS1iNDdiLTQzZDAtOTFkYi05MTZjYjViY2I2NmMiLCJyb2xlIjoiQURNSU4iLCJuYW1lIjoiQWRtaW4iLCJlbWFpbCI6ImFkbWluQHNob3BmbG93LmNvbSIsInN1YiI6ImFkbWluQHNob3BmbG93LmNvbSIsImlhdCI6MTc4MTY2NjU4NSwiZXhwIjoxNzgxNzUyOTg1fQ.ZV36ywM_gU6U_exyA9ox0npaOcXMZJI7DYF6Me2ijdgPFRc-eJ7nbQMxjO7L9PQj
 
+@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJuYW1lIjoiQWRtaW4iLCJlbWFpbCI6ImFkbWluQHNob3BmbG93LmNvbSIsInVzZXJJZCI6ImYzOTY0MDkxLWI0N2ItNDNkMC05MWRiLTkxNmNiNWJjYjY2YyIsInJvbGUiOiJBRE1JTiIsInN1YiI6ImFkbWluQHNob3BmbG93LmNvbSIsImlhdCI6MTc4MTc4ODk2NywiZXhwIjoxNzgxODc1MzY3fQ.UCMidnPwt8KZ1oof6JBCC0bpQB1fJibnKlOFuS8JPN-GB-62kS-N_-dCk-OV62RR
+
+###  ─────────────────────────────────────────────
+###  PRODUCTS (Admin only)
+###  ─────────────────────────────────────────────
 
 ### Create Product
 POST https://event-driven-e-commerce.onrender.com/api/v1/products
@@ -22,6 +26,13 @@ Authorization: Bearer {{adminToken}}
   "categoryId": null
 }
 
+### List Products
+GET https://event-driven-e-commerce.onrender.com/api/v1/products
+
+###  ─────────────────────────────────────────────
+###  INVENTORY (Admin only)
+###  ─────────────────────────────────────────────
+
 ### Add Inventory
 POST https://event-driven-e-commerce.onrender.com/api/v1/inventory
 Content-Type: application/json
@@ -33,26 +44,94 @@ Authorization: Bearer {{adminToken}}
   "quantityToAdd": 100
 }
 
-### Place Order
+### Check Stock
+GET https://event-driven-e-commerce.onrender.com/api/v1/inventory/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
+
+###  ─────────────────────────────────────────────
+###  USER ACCOUNT — Register + Login as Chandana
+###  ─────────────────────────────────────────────
+
+### Step 1: Register Chandana's account (run once only)
+POST https://event-driven-e-commerce.onrender.com/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "name": "Chandana",
+  "email": "chandanacherry869@gmail.com",
+  "password": "test1234"
+}
+
+### Step 2: Login as Chandana — copy token from response into @userToken below
+POST https://event-driven-e-commerce.onrender.com/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "chandanacherry869@gmail.com",
+  "password": "test1234"
+}
+
+@userToken = eyJhbGciOiJIUzM4NCJ9.eyJyb2xlIjoiVVNFUiIsInVzZXJJZCI6ImViNGQ4M2RlLTlhYjctNGQ3OS1hNDMyLTc1YTdkN2ExNGJiOCIsImVtYWlsIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwibmFtZSI6IkNoYW5kYW5hIiwic3ViIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwiaWF0IjoxNzgxODA0NTM2LCJleHAiOjE3ODE4OTA5MzZ9.guq5isY-CA3jko8exTEGGW4JHcjDRft1Sv8eZ03AGT_OxWHQEcigq5TDN5iYWvDA
+
+###  ─────────────────────────────────────────────
+###  ORDERS — Place as Chandana (triggers email)
+###  ─────────────────────────────────────────────
+
+### Step 3: Place Order — confirmation email sent to chandanacherry869@gmail.com
 POST https://event-driven-e-commerce.onrender.com/api/v1/orders
 Content-Type: application/json
-Authorization: Bearer {{adminToken}}
+Authorization: Bearer {{userToken}}
 
 {
   "items": [
     {
       "productId": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
       "productName": "Wireless Headphones",
-      "quantity": 2,
+      "quantity": 1,
       "unitPrice": 99.99
     }
   ]
 }
 
-### Get My Orders (lists all orders — check status field)
+### Cancel Order (PENDING only — paste order ID from Place Order response)
+POST https://event-driven-e-commerce.onrender.com/api/v1/orders/PASTE_ORDER_ID_HERE/cancel
+Authorization: Bearer {{userToken}}
+
+### Get My Orders (as Chandana)
 GET https://event-driven-e-commerce.onrender.com/api/v1/orders
+Authorization: Bearer {{userToken}}
+
+### Get Order by ID (as Chandana)
+GET https://event-driven-e-commerce.onrender.com/api/v1/orders/PASTE_ORDER_ID_HERE
+Authorization: Bearer {{userToken}}
+
+###  ─────────────────────────────────────────────
+###  ADMIN — All Orders (new endpoints)
+###  ─────────────────────────────────────────────
+
+### Get ALL orders from all users (paginated)
+GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders
 Authorization: Bearer {{adminToken}}
 
-### Get Order by ID (paste real UUID from Place Order response)
-GET https://event-driven-e-commerce.onrender.com/api/v1/orders/PASTE_ORDER_ID_HERE
+### Get all CONFIRMED orders
+GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders?status=CONFIRMED
+Authorization: Bearer {{adminToken}}
+
+### Get all PENDING orders
+GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders?status=PENDING
+Authorization: Bearer {{adminToken}}
+
+### Get all CANCELLED orders
+GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders?status=CANCELLED
+Authorization: Bearer {{adminToken}}
+
+### Get any order by ID (admin can see any user's order)
+GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/PASTE_ORDER_ID_HERE
+Authorization: Bearer {{adminToken}}
+
+###  ─────────────────────────────────────────────
+###  ADMIN — Own Orders
+###  ─────────────────────────────────────────────
+
+### Get Admin's own orders
+GET https://event-driven-e-commerce.onrender.com/api/v1/orders
 Authorization: Bearer {{adminToken}}

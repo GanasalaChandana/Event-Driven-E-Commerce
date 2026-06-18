@@ -47,6 +47,13 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getMyOrder(id, resolveUser(auth).getId()));
     }
 
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<OrderResponse> cancelOrder(
+            @PathVariable UUID id,
+            Authentication auth) {
+        return ResponseEntity.ok(orderService.cancelMyOrder(id, resolveUser(auth).getId()));
+    }
+
     private com.shopflow.user.entity.User resolveUser(Authentication auth) {
         return userRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException(
