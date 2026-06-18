@@ -31,10 +31,11 @@ public class EmailNotificationService {
     @Async
     public void sendOrderConfirmation(UUID orderId, String toEmail, BigDecimal totalAmount) {
         String subject = "Order Confirmed — ShopFlow #" + orderId.toString().substring(0, 8).toUpperCase();
+        String amountLine = totalAmount != null ? "Total    : $" + totalAmount + "\n" : "";
         String text = "Hi,\n\n" +
                 "Your order has been confirmed!\n\n" +
                 "Order ID : " + orderId + "\n" +
-                "Total    : $" + totalAmount + "\n\n" +
+                amountLine + "\n" +
                 "Thank you for shopping with ShopFlow.\n\n" +
                 "— The ShopFlow Team";
         send(toEmail, subject, text, orderId);

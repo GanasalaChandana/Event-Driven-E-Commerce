@@ -179,6 +179,36 @@ security:
   - BearerAuth: []
 
 paths:
+  /api/v1/admin/orders/{id}/status:
+    patch:
+      tags: [Admin]
+      summary: Manually update an order's status (ADMIN only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [PENDING, CONFIRMED, CANCELLED] }
+            example:
+              status: CONFIRMED
+      responses:
+        '200':
+          description: Order status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '404':
+          description: Order not found
+
   /api/v1/admin/users:
     get:
       tags: [Admin]

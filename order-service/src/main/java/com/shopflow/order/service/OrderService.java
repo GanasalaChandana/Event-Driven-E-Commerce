@@ -10,6 +10,7 @@ import com.shopflow.order.event.OrderConfirmedEvent;
 import com.shopflow.order.event.OrderCreatedEvent;
 import com.shopflow.order.event.OrderPlacedApplicationEvent;
 import com.shopflow.order.event.OrderCancelledApplicationEvent;
+import com.shopflow.order.event.OrderStatusChangedApplicationEvent;
 import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
 import com.shopflow.order.messaging.OrderEventProducer;
@@ -169,6 +170,21 @@ public class OrderService {
 
         applicationEventPublisher.publishEvent(
                 new OrderCancelledApplicationEvent(this, order.getId(), order.getUserEmail()));
+
+        return OrderResponse.from(order);
+    }
+
+    @Transactional
+    public OrderResponse updateOrderStatus(UUID orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+        log.info("Order {} status updated to {} by admin", orderId, newStatus);
+
+        applicationEventPublisher.publishEvent(
+                new OrderStatusChangedApplicationEvent(this, order.getId(), order.getUserEmail(), newStatus));
 
         return OrderResponse.from(order);
     }

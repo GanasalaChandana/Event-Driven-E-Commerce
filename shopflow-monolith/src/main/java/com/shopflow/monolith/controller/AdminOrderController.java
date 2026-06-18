@@ -1,8 +1,10 @@
 package com.shopflow.monolith.controller;
 
 import com.shopflow.order.dto.OrderResponse;
+import com.shopflow.order.dto.OrderStatusUpdateRequest;
 import com.shopflow.order.entity.OrderStatus;
 import com.shopflow.order.service.OrderService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,5 +36,12 @@ public class AdminOrderController {
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable UUID id) {
         return ResponseEntity.ok(orderService.getOrderById(id));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<OrderResponse> updateOrderStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody OrderStatusUpdateRequest request) {
+        return ResponseEntity.ok(orderService.updateOrderStatus(id, request.getStatus()));
     }
 }

@@ -144,6 +144,15 @@ Authorization: Bearer {{adminToken}}
 GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/PASTE_ORDER_ID_HERE
 Authorization: Bearer {{adminToken}}
 
+### Update order status (admin — paste order ID, set status to CONFIRMED or CANCELLED)
+PATCH https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/PASTE_ORDER_ID_HERE/status
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "status": "CANCELLED"
+}
+
 ###  ─────────────────────────────────────────────
 ###  ADMIN — Users
 ###  ─────────────────────────────────────────────
