@@ -1,8 +1,26 @@
-# ShopFlow — Event-Driven E-Commerce Backend
+# ShopFlow — E-Commerce REST API
 
-A production-grade e-commerce backend built as a Spring Boot monolith that combines 4 domain services (User, Product, Order, Inventory) into a single deployable unit using `build-helper-maven-plugin`. Services communicate asynchronously via Kafka events with graceful degradation when Kafka is unavailable.
+A production-grade e-commerce backend built as a Spring Boot 3.x monolith that combines four domain services (User, Product, Order, Inventory) into a single deployable unit using `build-helper-maven-plugin`. Cross-module communication uses Spring `ApplicationEvent` with `@TransactionalEventListener` and `@Async`, with optional Kafka for distributed deployments.
 
-**Live API:** https://event-driven-e-commerce.onrender.com
+**Live API:** https://event-driven-e-commerce.onrender.com  
+**Swagger UI:** https://event-driven-e-commerce.onrender.com/swagger-ui.html
+
+> The free Render instance spins down after inactivity. First request may take 30–60 seconds.
+
+---
+
+## Features
+
+- JWT authentication with role-based access (USER / ADMIN)
+- Product catalog with full-text search and category filtering
+- Order placement with automatic PENDING → CONFIRMED fulfillment
+- User-initiated order cancellation (PENDING orders only)
+- Admin dashboard: manage all orders, users, inventory, and categories
+- Email notifications via Resend API (order confirmed, order cancelled, welcome)
+- IP-based rate limiting via Bucket4j (20 req/min)
+- Paginated responses throughout
+- RFC 9457 Problem Details error format
+- OpenAPI 3 spec at `/openapi.yaml`
 
 ---
 
@@ -13,31 +31,17 @@ Client
   │
   ▼
 shopflow-monolith (Spring Boot 3.x, port 10000)
-  ├── UserService     — registration, login, JWT
-  ├── ProductService  — product & category CRUD
-  ├── OrderService    — place orders, track status
-  └── InventoryService — stock management
+  ├── user-service      — registration, login, JWT, profiles
+  ├── product-service   — products, categories, search
+  ├── order-service     — place, cancel, track orders
+  └── inventory-service — stock management with cache
          │
-         ▼
-   Apache Kafka (async event bus — Saga pattern)
+         ▼ (optional)
+   Apache Kafka
    order.created → inventory.reserved → order.confirmed
 ```
 
-### Event Flow
-
-```
-1. POST /api/v1/orders
-   → Order saved as PENDING
-   → Publishes: order.created
-
-2. Inventory Service consumes order.created
-   → Checks + reserves stock
-   → Publishes: inventory.reserved  (or inventory.failed)
-
-3. Order Service consumes inventory.reserved
-   → Updates order to CONFIRMED
-   → Publishes: order.confirmed
-```
+When Kafka is unavailable (Render free tier), fulfillment runs synchronously via Spring `ApplicationEvent` — the order auto-confirms within seconds.
 
 ---
 
@@ -49,8 +53,10 @@ shopflow-monolith (Spring Boot 3.x, port 10000)
 | Framework | Spring Boot 3.x |
 | Security | Spring Security 6 + JWT (JJWT 0.12) |
 | Database | PostgreSQL |
-| Cache | Redis (inventory stock cache) |
-| Messaging | Apache Kafka |
+| Messaging | Apache Kafka (optional) |
+| Email | Resend HTTP API |
+| Rate Limiting | Bucket4j 8.x (in-memory) |
+| Build | Maven + build-helper-maven-plugin |
 | Deployment | Docker + Render.com |
 
 ---
@@ -59,138 +65,134 @@ shopflow-monolith (Spring Boot 3.x, port 10000)
 
 **Base URL:** `https://event-driven-e-commerce.onrender.com`
 
-> The free Render instance spins down after inactivity. First request may take 30–60 seconds to wake up.
+All protected endpoints require:
+```
+Authorization: Bearer <token>
+```
 
 ---
 
-### Authentication
+### Auth
 
 #### Register
-
 ```http
 POST /api/v1/auth/register
 Content-Type: application/json
 
 {
-  "name": "Chandana",
-  "email": "chandana@example.com",
+  "name": "Alice",
+  "email": "alice@example.com",
   "password": "secret123"
 }
 ```
-
 **Response — 201 Created**
 ```json
 {
-  "token": "eyJhbGciOiJIUzM4NCJ9...",
-  "type": "Bearer",
-  "user": {
-    "id": "a1b2c3d4-...",
-    "name": "Chandana",
-    "email": "chandana@example.com",
-    "role": "USER"
-  }
+  "token": "eyJhbGci...",
+  "userId": "a1b2c3d4-...",
+  "email": "alice@example.com",
+  "name": "Alice",
+  "role": "USER"
 }
 ```
-
----
+A welcome email is sent to the registered address.
 
 #### Login
-
 ```http
 POST /api/v1/auth/login
 Content-Type: application/json
 
 {
-  "email": "chandana@example.com",
+  "email": "alice@example.com",
   "password": "secret123"
 }
 ```
+**Response — 200 OK** — same shape as register response.
 
+> **Default admin:** `admin@shopflow.com` / `admin123`
+
+---
+
+### User Profile
+
+#### Get my profile
+```http
+GET /api/v1/users/me
+Authorization: Bearer <token>
+```
 **Response — 200 OK**
 ```json
 {
-  "token": "eyJhbGciOiJIUzM4NCJ9...",
-  "type": "Bearer",
-  "user": {
-    "id": "a1b2c3d4-...",
-    "name": "Chandana",
-    "email": "chandana@example.com",
-    "role": "USER"
-  }
+  "id": "a1b2c3d4-...",
+  "name": "Alice",
+  "email": "alice@example.com",
+  "role": "USER",
+  "createdAt": "2026-06-17T03:26:27"
 }
 ```
 
-> A default admin account is seeded on startup:
-> **Email:** `admin@shopflow.com` | **Password:** `admin123`
+#### Get user by ID (Admin only)
+```http
+GET /api/v1/users/{id}
+Authorization: Bearer <admin-token>
+```
+
+---
+
+### Categories
+
+#### List all categories (public)
+```http
+GET /api/v1/categories
+```
+**Response — 200 OK**
+```json
+[
+  {
+    "id": "9129a5e4-99be-4720-b886-4bb0f01813cc",
+    "name": "Electronics",
+    "description": "Electronic devices and accessories"
+  }
+]
+```
+
+#### Create category (Admin only)
+```http
+POST /api/v1/categories
+Content-Type: application/json
+Authorization: Bearer <admin-token>
+
+{
+  "name": "Electronics",
+  "description": "Electronic devices and accessories"
+}
+```
+**Response — 201 Created** — category object.
 
 ---
 
 ### Products
 
-#### List Products (public)
-
+#### List products (public)
 ```http
-GET /api/v1/products?page=0&size=20&sort=createdAt,desc
+GET /api/v1/products?page=0&size=20&q=headphones&categoryId=<uuid>
 ```
 
-**Response — 200 OK**
-```json
-{
-  "content": [
-    {
-      "id": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
-      "name": "Wireless Headphones",
-      "description": "High quality noise-cancelling headphones",
-      "price": 99.99,
-      "sku": "WH-001",
-      "category": null,
-      "imageUrl": null,
-      "active": true,
-      "createdAt": "2026-06-17T03:26:27.869374599"
-    }
-  ],
-  "totalElements": 1,
-  "totalPages": 1,
-  "number": 0,
-  "size": 20
-}
-```
-
-**Query parameters:**
 | Param | Description |
 |---|---|
-| `page` | Page number (0-indexed) |
-| `size` | Items per page (default 20) |
-| `q` | Full-text search by name/description |
+| `q` | Full-text search on name and description |
 | `categoryId` | Filter by category UUID |
+| `page` | Page number (0-indexed, default 0) |
+| `size` | Items per page (default 20) |
 
----
+**Response — 200 OK** — paginated product list.
 
-#### Get Product by ID (public)
-
+#### Get product by ID (public)
 ```http
 GET /api/v1/products/{id}
 ```
 
-**Response — 200 OK**
-```json
-{
-  "id": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
-  "name": "Wireless Headphones",
-  "description": "High quality noise-cancelling headphones",
-  "price": 99.99,
-  "sku": "WH-001",
-  "category": null,
-  "imageUrl": null,
-  "active": true,
-  "createdAt": "2026-06-17T03:26:27.869374599"
-}
-```
-
----
-
-#### Create Product (Admin only)
-
+#### Create product (Admin only)
 ```http
 POST /api/v1/products
 Content-Type: application/json
@@ -198,32 +200,16 @@ Authorization: Bearer <admin-token>
 
 {
   "name": "Wireless Headphones",
-  "description": "High quality noise-cancelling headphones",
+  "description": "Noise-cancelling headphones",
   "price": 99.99,
   "sku": "WH-001",
-  "categoryId": null,
-  "imageUrl": null
+  "categoryId": "9129a5e4-99be-4720-b886-4bb0f01813cc"
 }
 ```
+**Required:** `name`, `price`, `sku`  
+**Response — 201 Created** — product object.
 
-**Required fields:** `name`, `price`, `sku`
-
-**Response — 201 Created**
-```json
-{
-  "id": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
-  "name": "Wireless Headphones",
-  "price": 99.99,
-  "sku": "WH-001",
-  "active": true,
-  "createdAt": "2026-06-17T03:26:27.869374599"
-}
-```
-
----
-
-#### Update Product (Admin only)
-
+#### Update product (Admin only)
 ```http
 PUT /api/v1/products/{id}
 Content-Type: application/json
@@ -231,80 +217,69 @@ Authorization: Bearer <admin-token>
 
 {
   "name": "Wireless Headphones Pro",
-  "description": "Updated description",
   "price": 129.99,
-  "sku": "WH-001-PRO"
+  "sku": "WH-001-PRO",
+  "categoryId": "9129a5e4-99be-4720-b886-4bb0f01813cc"
 }
 ```
 
-**Response — 200 OK** — updated product object
-
----
-
-#### Delete Product (Admin only)
-
+#### Delete product (Admin only)
 ```http
 DELETE /api/v1/products/{id}
 Authorization: Bearer <admin-token>
 ```
-
-**Response — 204 No Content**
+**Response — 204 No Content** (soft delete — preserves order history)
 
 ---
 
 ### Inventory
 
-#### Check Stock (public)
-
+#### Check stock (public)
 ```http
 GET /api/v1/inventory/{productId}
 ```
-
 **Response — 200 OK**
 ```json
 {
   "id": "...",
-  "productId": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
+  "productId": "ee04ec8d-...",
   "productName": "Wireless Headphones",
-  "quantityAvailable": 100,
-  "updatedAt": "2026-06-17T03:33:43"
+  "quantity": 200,
+  "reservedQuantity": 0,
+  "availableQuantity": 200
 }
 ```
 
----
-
-#### Add Stock (Admin only)
-
+#### Add stock (Admin only)
 ```http
 POST /api/v1/inventory
 Content-Type: application/json
 Authorization: Bearer <admin-token>
 
 {
-  "productId": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
+  "productId": "ee04ec8d-...",
   "productName": "Wireless Headphones",
   "quantityToAdd": 100
 }
 ```
 
-**Required fields:** `productId`, `productName`, `quantityToAdd` (min 1)
+#### Set absolute stock quantity (Admin only)
+```http
+PUT /api/v1/inventory/{productId}
+Content-Type: application/json
+Authorization: Bearer <admin-token>
 
-**Response — 200 OK**
-```json
 {
-  "id": "...",
-  "productId": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
-  "productName": "Wireless Headphones",
-  "quantityAvailable": 100
+  "quantity": 200
 }
 ```
+**Response — 200 OK** — updated inventory object.
 
 ---
 
 ### Orders
 
-#### Place Order (authenticated)
-
+#### Place order (authenticated)
 ```http
 POST /api/v1/orders
 Content-Type: application/json
@@ -313,75 +288,128 @@ Authorization: Bearer <token>
 {
   "items": [
     {
-      "productId": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
+      "productId": "ee04ec8d-...",
       "productName": "Wireless Headphones",
-      "quantity": 2,
+      "quantity": 1,
       "unitPrice": 99.99
     }
   ]
 }
 ```
-
-**Required fields per item:** `productId`, `productName`, `quantity` (min 1), `unitPrice`
-
 **Response — 201 Created**
 ```json
 {
-  "id": "f07d7d48-402c-41bf-a461-330141f5fb16",
-  "userId": "f3964091-b47b-43d0-91db-916cb5bcb66c",
-  "userEmail": "admin@shopflow.com",
+  "id": "f07d7d48-...",
+  "userId": "a1b2c3d4-...",
+  "userEmail": "alice@example.com",
   "status": "PENDING",
-  "totalAmount": 199.98,
-  "items": [
-    {
-      "productId": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
-      "productName": "Wireless Headphones",
-      "quantity": 2,
-      "unitPrice": 99.99,
-      "subtotal": 199.98
-    }
-  ],
-  "createdAt": "2026-06-17T17:21:34.143123582",
-  "updatedAt": "2026-06-17T17:21:34.143123582"
+  "totalAmount": 99.99,
+  "items": [...],
+  "createdAt": "2026-06-18T22:10:08",
+  "updatedAt": "2026-06-18T22:10:08"
 }
 ```
+A confirmation email is sent once the order moves to `CONFIRMED`.
 
-Order starts as `PENDING`. With Kafka running, it transitions to `CONFIRMED` after inventory is reserved, or `CANCELLED` if stock is insufficient.
+#### Order status lifecycle
+```
+PENDING → CONFIRMED   (stock reserved automatically)
+        → CANCELLED   (insufficient stock, or cancelled by user/admin)
+```
 
----
-
-#### List My Orders (authenticated)
-
+#### List my orders (authenticated)
 ```http
 GET /api/v1/orders?page=0&size=10
 Authorization: Bearer <token>
 ```
 
-**Response — 200 OK** — paginated list of the authenticated user's orders
-
----
-
-#### Get Order by ID (authenticated)
-
+#### Get order by ID (authenticated)
 ```http
 GET /api/v1/orders/{id}
 Authorization: Bearer <token>
 ```
 
-**Response — 200 OK** — order object (only accessible by the order's owner)
+#### Cancel order (authenticated — PENDING only)
+```http
+POST /api/v1/orders/{id}/cancel
+Authorization: Bearer <token>
+```
+Only the order owner can cancel. Only `PENDING` orders can be cancelled.  
+**Response — 200 OK** — updated order with `status: CANCELLED`.  
+**Response — 409 Conflict** — if order is not in PENDING status.
+
+A cancellation email is sent to the order owner.
 
 ---
 
-## Order Status Lifecycle
+### Admin — Orders
 
+#### Get all orders (paginated)
+```http
+GET /api/v1/admin/orders?page=0&size=20&status=PENDING
+Authorization: Bearer <admin-token>
 ```
-PENDING  →  CONFIRMED   (inventory reserved via Kafka)
-         →  CANCELLED   (insufficient stock via Kafka)
+`status` filter accepts: `PENDING`, `CONFIRMED`, `CANCELLED`
+
+#### Get any order by ID
+```http
+GET /api/v1/admin/orders/{id}
+Authorization: Bearer <admin-token>
+```
+
+#### Update order status
+```http
+PATCH /api/v1/admin/orders/{id}/status
+Content-Type: application/json
+Authorization: Bearer <admin-token>
+
+{
+  "status": "CONFIRMED"
+}
+```
+**Response — 200 OK** — updated order object. A status email is sent to the customer.
+
+---
+
+### Admin — Users
+
+#### List all users (paginated)
+```http
+GET /api/v1/admin/users?page=0&size=20
+Authorization: Bearer <admin-token>
+```
+
+#### Get user by ID
+```http
+GET /api/v1/admin/users/{id}
+Authorization: Bearer <admin-token>
 ```
 
 ---
 
-## Error Responses
+## Email Notifications
+
+Sent via [Resend](https://resend.com) HTTP API:
+
+| Trigger | Email |
+|---|---|
+| User registers | Welcome email |
+| Order confirmed | Order confirmation with items and total |
+| Order cancelled (by user) | Cancellation notice |
+| Admin updates order to CONFIRMED | Confirmation email |
+| Admin updates order to CANCELLED | Cancellation notice |
+
+---
+
+## Rate Limiting
+
+IP-based, in-memory via Bucket4j:
+- **20 requests per minute** per IP
+- Exceeding the limit returns `429 Too Many Requests`
+
+---
+
+## Error Format
 
 All errors follow [RFC 9457 Problem Details](https://datatracker.ietf.org/doc/html/rfc9457):
 
@@ -390,36 +418,20 @@ All errors follow [RFC 9457 Problem Details](https://datatracker.ietf.org/doc/ht
   "type": "about:blank",
   "title": "Bad Request",
   "status": 400,
-  "detail": "Validation failed",
-  "instance": "/api/v1/products",
-  "errors": {
-    "sku": "SKU is required",
-    "price": "Price is required"
-  }
+  "detail": "name is required",
+  "instance": "/api/v1/products"
 }
 ```
 
 | Status | Meaning |
 |---|---|
-| 400 | Validation failed — `errors` field lists field-level messages |
-| 401 | Missing or invalid JWT token |
-| 403 | Authenticated but insufficient role (e.g. USER trying admin endpoint) |
+| 400 | Validation failed |
+| 401 | Missing or invalid JWT |
+| 403 | Insufficient role |
 | 404 | Resource not found |
+| 409 | Business rule conflict (e.g. cancel non-PENDING order, duplicate SKU) |
+| 429 | Rate limit exceeded |
 | 500 | Internal server error |
-
----
-
-## Kafka Topics
-
-| Topic | Producer | Consumer | Trigger |
-|---|---|---|---|
-| `order.created` | Order Service | Inventory Service | Order placed |
-| `inventory.reserved` | Inventory Service | Order Service | Stock reserved |
-| `inventory.failed` | Inventory Service | Order Service | Insufficient stock |
-| `order.confirmed` | Order Service | Notification Service | Inventory confirmed |
-| `order.cancelled` | Order Service | Notification Service | Order cancelled |
-
-Kafka is optional — the API functions fully without it. Events are silently skipped when the broker is unavailable.
 
 ---
 
@@ -428,33 +440,34 @@ Kafka is optional — the API functions fully without it. Events are silently sk
 **Prerequisites:** Java 17, Maven 3.9+, Docker Desktop
 
 ### 1. Start infrastructure
-
 ```bash
 docker compose up -d
 ```
+Starts PostgreSQL, Kafka, Zookeeper, and Kafka UI (http://localhost:8090).
 
-Starts: PostgreSQL, Redis, Kafka, Zookeeper, Kafka UI (http://localhost:8090)
+### 2. Set environment variables
+```bash
+export RESEND_API_KEY=re_your_key_here
+export JWT_SECRET=your-256-bit-secret
+```
 
-### 2. Build and run the monolith
-
+### 3. Run the monolith
 ```bash
 cd shopflow-monolith
 mvn spring-boot:run
 ```
+API available at `http://localhost:10000`
 
-API available at: `http://localhost:8080`
-
-### 3. Environment variables (optional overrides)
+### Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/shopflow_db` | PostgreSQL connection |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/shopflow_db` | PostgreSQL URL |
 | `SPRING_DATASOURCE_USERNAME` | `shopflow` | DB username |
 | `SPRING_DATASOURCE_PASSWORD` | `shopflow123` | DB password |
-| `JWT_SECRET` | dev default | Must be 256-bit min in production |
-| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker |
-| `REDIS_HOST` | `localhost` | Redis host |
-| `REDIS_PORT` | `6379` | Redis port |
+| `JWT_SECRET` | dev default | Min 256-bit in production |
+| `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker (optional) |
+| `RESEND_API_KEY` | — | Resend API key for emails |
 
 ---
 
@@ -464,20 +477,19 @@ API available at: `http://localhost:8080`
 shopflow/
 ├── docker-compose.yml
 ├── Dockerfile.monolith
-├── shopflow-monolith/       ← deployable artifact
+├── shopflow-monolith/          ← deployable artifact
 │   └── src/main/java/com/shopflow/monolith/
-│       ├── config/          ← SecurityConfig, JwtAuthFilter, DataInitializer
-│       └── controller/
+│       ├── config/             ← Security, JWT filter, rate limiting, event listeners
+│       ├── controller/         ← Admin controllers
+│       ├── exception/          ← Global exception handler
+│       └── notification/       ← Email service (Resend)
 ├── user-service/
 ├── product-service/
 ├── order-service/
-├── inventory-service/
-├── notification-service/
-├── api-gateway/             ← local dev only
-└── eureka-server/           ← local dev only
+└── inventory-service/
 ```
 
-Each service module follows:
+Each service follows:
 ```
 src/main/java/com/shopflow/<service>/
 ├── controller/
@@ -485,7 +497,13 @@ src/main/java/com/shopflow/<service>/
 ├── repository/
 ├── entity/
 ├── dto/
-├── event/          ← Kafka event POJOs
+├── event/
 ├── config/
 └── exception/
 ```
+
+---
+
+## GitHub
+
+[github.com/GanasalaChandana/Event-Driven-E-Commerce](https://github.com/GanasalaChandana/Event-Driven-E-Commerce)
