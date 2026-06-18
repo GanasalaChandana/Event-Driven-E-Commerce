@@ -30,7 +30,7 @@ public class ProductService {
     }
 
     public Page<ProductResponse> listByCategory(UUID categoryId, Pageable pageable) {
-        return productRepository.findAllByCategoryIdAndActiveTrue(categoryId, pageable).map(ProductResponse::from);
+        return productRepository.findAllByCategory_IdAndActiveTrue(categoryId, pageable).map(ProductResponse::from);
     }
 
     public Page<ProductResponse> search(String query, Pageable pageable) {
