@@ -1,5 +1,6 @@
 package com.shopflow.inventory.service;
 
+import com.shopflow.inventory.dto.InventoryAdjustRequest;
 import com.shopflow.inventory.dto.InventoryRequest;
 import com.shopflow.inventory.dto.InventoryResponse;
 import com.shopflow.inventory.entity.Inventory;
@@ -125,6 +126,17 @@ public class InventoryService {
         if (cached == null) {
             cacheService.setStock(productId, inv.getAvailableQuantity());
         }
+        return InventoryResponse.from(inv);
+    }
+
+    @Transactional
+    public InventoryResponse adjustStock(UUID productId, InventoryAdjustRequest request) {
+        Inventory inv = inventoryRepository.findByProductId(productId)
+                .orElseThrow(() -> new InventoryNotFoundException(productId));
+        inv.setQuantity(request.getQuantity());
+        inv = inventoryRepository.save(inv);
+        cacheService.setStock(inv.getProductId(), inv.getAvailableQuantity());
+        log.info("Stock adjusted to {} for product {}", request.getQuantity(), productId);
         return InventoryResponse.from(inv);
     }
 

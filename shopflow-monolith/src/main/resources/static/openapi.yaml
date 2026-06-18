@@ -19,6 +19,20 @@ components:
       bearerFormat: JWT
 
   schemas:
+    CategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: Electronics }
+        description: { type: string, example: Electronic devices and accessories }
+
+    CategoryResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+
     PageOfUsers:
       type: object
       properties:
@@ -463,6 +477,63 @@ paths:
                 $ref: '#/components/schemas/InventoryResponse'
         '404':
           description: Not found
+    put:
+      tags: [Inventory]
+      summary: Set stock to an absolute quantity (ADMIN only)
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity: { type: integer, minimum: 0, example: 50 }
+      responses:
+        '200':
+          description: Stock adjusted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResponse'
+        '404':
+          description: Product not found in inventory
+
+  /api/v1/categories:
+    get:
+      tags: [Categories]
+      summary: List all categories
+      security: []
+      responses:
+        '200':
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+    post:
+      tags: [Categories]
+      summary: Create a category (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
 
   /api/v1/orders:
     post:

@@ -1,5 +1,6 @@
 package com.shopflow.inventory.controller;
 
+import com.shopflow.inventory.dto.InventoryAdjustRequest;
 import com.shopflow.inventory.dto.InventoryRequest;
 import com.shopflow.inventory.dto.InventoryResponse;
 import com.shopflow.inventory.service.InventoryService;
@@ -22,6 +23,19 @@ public class InventoryController {
     @GetMapping("/{productId}")
     public ResponseEntity<InventoryResponse> getStock(@PathVariable UUID productId) {
         return ResponseEntity.ok(inventoryService.getByProductId(productId));
+    }
+
+    // Admin-only: set stock to an absolute quantity
+    @PutMapping("/{productId}")
+    public ResponseEntity<InventoryResponse> adjustStock(
+            @PathVariable UUID productId,
+            @Valid @RequestBody InventoryAdjustRequest request,
+            Authentication auth) {
+        if (auth == null || auth.getAuthorities().stream()
+                .noneMatch(a -> a.equals(new SimpleGrantedAuthority("ROLE_ADMIN")))) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(inventoryService.adjustStock(productId, request));
     }
 
     // Admin-only: add stock to a product

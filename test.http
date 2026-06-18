@@ -29,6 +29,12 @@ Authorization: Bearer {{adminToken}}
 ### List Products
 GET https://event-driven-e-commerce.onrender.com/api/v1/products
 
+### Search Products by name
+GET https://event-driven-e-commerce.onrender.com/api/v1/products?q=headphones
+
+### Filter Products by category
+GET https://event-driven-e-commerce.onrender.com/api/v1/products?categoryId=PASTE_CATEGORY_ID_HERE
+
 ###  ─────────────────────────────────────────────
 ###  INVENTORY (Admin only)
 ###  ─────────────────────────────────────────────
@@ -46,6 +52,32 @@ Authorization: Bearer {{adminToken}}
 
 ### Check Stock
 GET https://event-driven-e-commerce.onrender.com/api/v1/inventory/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
+
+### Adjust Stock (set absolute quantity — Admin only)
+PUT https://event-driven-e-commerce.onrender.com/api/v1/inventory/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "quantity": 200
+}
+
+###  ─────────────────────────────────────────────
+###  CATEGORIES (Admin create / Public list)
+###  ─────────────────────────────────────────────
+
+### List all categories
+GET https://event-driven-e-commerce.onrender.com/api/v1/categories
+
+### Create a category (Admin only)
+POST https://event-driven-e-commerce.onrender.com/api/v1/categories
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Electronics",
+  "description": "Electronic devices and accessories"
+}
 
 ###  ─────────────────────────────────────────────
 ###  USER ACCOUNT — Register + Login as Chandana
