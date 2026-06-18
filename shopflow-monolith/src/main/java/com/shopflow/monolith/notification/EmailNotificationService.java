@@ -41,6 +41,31 @@ public class EmailNotificationService {
     }
 
     @Async
+    public void sendWelcome(String toEmail, String name) {
+        String subject = "Welcome to ShopFlow, " + name + "!";
+        String text = "Hi " + name + ",\n\n" +
+                "Welcome to ShopFlow! Your account has been created successfully.\n\n" +
+                "You can now browse products and place orders at:\n" +
+                "https://event-driven-e-commerce.onrender.com\n\n" +
+                "— The ShopFlow Team";
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+            Map<String, Object> body = Map.of(
+                    "from", FROM,
+                    "to", List.of(toEmail),
+                    "subject", subject,
+                    "text", text
+            );
+            restTemplate.postForObject(RESEND_URL, new HttpEntity<>(body, headers), String.class);
+            log.info("Welcome email sent to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send welcome email to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    @Async
     public void sendOrderCancellation(UUID orderId, String toEmail, String reason) {
         String subject = "Order Cancelled — ShopFlow #" + orderId.toString().substring(0, 8).toUpperCase();
         String text = "Hi,\n\n" +

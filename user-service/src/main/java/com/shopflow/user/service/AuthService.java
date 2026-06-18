@@ -5,12 +5,14 @@ import com.shopflow.user.dto.LoginRequest;
 import com.shopflow.user.dto.RegisterRequest;
 import com.shopflow.user.dto.UserResponse;
 import com.shopflow.user.entity.User;
+import com.shopflow.user.event.UserRegisteredApplicationEvent;
 import com.shopflow.user.event.UserRegisteredEvent;
 import com.shopflow.user.exception.EmailAlreadyExistsException;
 import com.shopflow.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -34,6 +36,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
     private final KafkaTemplate<String, UserRegisteredEvent> kafkaTemplate;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Value("${kafka.topics.user-registered:user.registered}")
     private String userRegisteredTopic;
@@ -69,6 +72,9 @@ public class AuthService {
         } catch (Exception e) {
             log.warn("Kafka send error: {}", e.getMessage());
         }
+
+        applicationEventPublisher.publishEvent(
+                new UserRegisteredApplicationEvent(this, user.getEmail(), user.getName()));
 
         String token = generateToken(user);
         return new AuthResponse(token, UserResponse.from(user));
