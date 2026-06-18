@@ -69,7 +69,7 @@ public class OrderService {
         // Publish Spring application event — picked up by SyncOrderFulfillmentService
         // in the monolith for in-JVM confirmation when Kafka is unavailable
         applicationEventPublisher.publishEvent(
-                new OrderPlacedApplicationEvent(this, saved.getId(), request));
+                new OrderPlacedApplicationEvent(this, saved.getId(), userEmail, total, request));
 
         // Publish to Kafka — Inventory Service will pick this up when Kafka is available
         eventProducer.publishOrderCreated(OrderCreatedEvent.builder()

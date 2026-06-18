@@ -5,6 +5,7 @@ import com.shopflow.inventory.service.InventoryService;
 import com.shopflow.order.dto.OrderRequest;
 import com.shopflow.order.event.OrderPlacedApplicationEvent;
 import com.shopflow.order.service.OrderService;
+import com.shopflow.monolith.notification.EmailNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -22,12 +23,8 @@ public class SyncOrderFulfillmentService {
 
     private final InventoryService inventoryService;
     private final OrderService orderService;
+    private final EmailNotificationService emailNotificationService;
 
-    /**
-     * Runs after the order transaction commits, in a separate thread.
-     * Directly reserves inventory and confirms/cancels the order without Kafka.
-     * When Kafka IS available, this still runs but confirmOrder/cancelOrder are idempotent.
-     */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderPlaced(OrderPlacedApplicationEvent event) {
@@ -49,9 +46,13 @@ public class SyncOrderFulfillmentService {
             if (reserved) {
                 orderService.confirmOrder(orderId);
                 log.info("Order {} CONFIRMED via sync fulfillment", orderId);
+                emailNotificationService.sendOrderConfirmation(
+                        orderId, event.getUserEmail(), event.getTotalAmount());
             } else {
                 orderService.cancelOrder(orderId, "Insufficient stock");
                 log.warn("Order {} CANCELLED via sync fulfillment — insufficient stock", orderId);
+                emailNotificationService.sendOrderCancellation(
+                        orderId, event.getUserEmail(), "Insufficient stock");
             }
         } catch (Exception e) {
             log.error("Sync fulfillment failed for order {}: {}", orderId, e.getMessage());
