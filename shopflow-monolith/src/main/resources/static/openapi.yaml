@@ -19,6 +19,15 @@ components:
       bearerFormat: JWT
 
   schemas:
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [USER, ADMIN] }
+        createdAt: { type: string, format: date-time }
+
     RegisterRequest:
       type: object
       required: [name, email, password]
@@ -158,6 +167,41 @@ security:
   - BearerAuth: []
 
 paths:
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      summary: Get current user's profile
+      responses:
+        '200':
+          description: Profile of the authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Not authenticated
+
+  /api/v1/users/{id}:
+    get:
+      tags: [Users]
+      summary: Get any user by ID (ADMIN only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '403':
+          description: Admin role required
+        '404':
+          description: User not found
+
   /api/v1/auth/register:
     post:
       tags: [Auth]

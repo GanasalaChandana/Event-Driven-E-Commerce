@@ -73,6 +73,22 @@ Content-Type: application/json
 @userToken = eyJhbGciOiJIUzM4NCJ9.eyJyb2xlIjoiVVNFUiIsInVzZXJJZCI6ImViNGQ4M2RlLTlhYjctNGQ3OS1hNDMyLTc1YTdkN2ExNGJiOCIsImVtYWlsIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwibmFtZSI6IkNoYW5kYW5hIiwic3ViIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwiaWF0IjoxNzgxODA0NTM2LCJleHAiOjE3ODE4OTA5MzZ9.guq5isY-CA3jko8exTEGGW4JHcjDRft1Sv8eZ03AGT_OxWHQEcigq5TDN5iYWvDA
 
 ###  ─────────────────────────────────────────────
+###  USER PROFILE
+###  ─────────────────────────────────────────────
+
+### Get my profile (as Chandana)
+GET https://event-driven-e-commerce.onrender.com/api/v1/users/me
+Authorization: Bearer {{userToken}}
+
+### Get my profile (as Admin)
+GET https://event-driven-e-commerce.onrender.com/api/v1/users/me
+Authorization: Bearer {{adminToken}}
+
+### Get any user by ID (Admin only — paste Chandana's userId from login response)
+GET https://event-driven-e-commerce.onrender.com/api/v1/users/eb4d83de-9ab7-4d79-a432-75a7d7a14bb8
+Authorization: Bearer {{adminToken}}
+
+###  ─────────────────────────────────────────────
 ###  ORDERS — Place as Chandana (triggers email)
 ###  ─────────────────────────────────────────────
 
@@ -93,7 +109,7 @@ Authorization: Bearer {{userToken}}
 }
 
 ### Cancel Order (PENDING only — paste order ID from Place Order response)
-POST https://event-driven-e-commerce.onrender.com/api/v1/orders/PASTE_ORDER_ID_HERE/cancel
+POST https://event-driven-e-commerce.onrender.com/api/v1/orders/e5b31b53-f6ec-4403-a669-76d1cdbb2155/cancel
 Authorization: Bearer {{userToken}}
 
 ### Get My Orders (as Chandana)
