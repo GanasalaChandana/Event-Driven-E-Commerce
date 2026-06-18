@@ -72,13 +72,6 @@ eureka:
   client:
     enabled: false
 
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    path: /swagger-ui.html
-    url: /openapi.yaml
-    tags-sorter: alpha
 
 management:
   endpoints:
