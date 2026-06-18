@@ -27,17 +27,6 @@ spring:
       password: ${REDIS_PASSWORD:}
       ssl:
         enabled: ${REDIS_SSL:false}
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     admin:
@@ -74,6 +63,9 @@ kafka:
     inventory-failed: inventory.failed
     order-confirmed: order.confirmed
     order-cancelled: order.cancelled
+
+resend:
+  api-key: ${RESEND_API_KEY}
 
 inventory:
   stock:
