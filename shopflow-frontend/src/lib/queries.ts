@@ -31,6 +31,9 @@ export const getCategories = () =>
 export const createCategory = (data: object) =>
   api.post<Category>("/api/v1/categories", data).then((r) => r.data);
 
+export const deleteCategory = (id: string) =>
+  api.delete(`/api/v1/categories/${id}`);
+
 // Inventory
 export const getInventory = (productId: string) =>
   api.get<InventoryItem>(`/api/v1/inventory/${productId}`).then((r) => r.data);

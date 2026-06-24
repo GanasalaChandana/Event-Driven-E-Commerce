@@ -4,20 +4,29 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import AdminLayout from "@/components/AdminLayout";
-import { getCategories, createCategory } from "@/lib/queries";
+import { getCategories, createCategory, deleteCategory } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Tag } from "lucide-react";
+import { Plus, Tag, Trash2 } from "lucide-react";
 
 export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+
+  const { mutate: remove } = useMutation({
+    mutationFn: (id: string) => deleteCategory(id),
+    onSuccess: () => {
+      toast.success("Category deleted");
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    },
+    onError: () => toast.error("Failed to delete category"),
+  });
 
   const { data: categories, isLoading } = useQuery({
     queryKey: ["categories"],
@@ -68,6 +77,7 @@ export default function AdminCategoriesPage() {
                   <th className="text-left px-4 py-3 text-slate-500 font-medium">Name</th>
                   <th className="text-left px-4 py-3 text-slate-500 font-medium">Description</th>
                   <th className="text-left px-4 py-3 text-slate-500 font-medium">ID</th>
+                  <th className="text-left px-4 py-3 text-slate-500 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -76,6 +86,16 @@ export default function AdminCategoriesPage() {
                     <td className="px-4 py-3 font-medium">{cat.name}</td>
                     <td className="px-4 py-3 text-slate-500">{cat.description || "—"}</td>
                     <td className="px-4 py-3 text-slate-400 font-mono text-xs">{cat.id}</td>
+                    <td className="px-4 py-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => remove(cat.id)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

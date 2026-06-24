@@ -53,7 +53,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:shopflow-super-secret-key-change-in-production-min-256-bits}
-  expiration-ms: 86400000
+  expiration-ms: 604800000
 
 kafka:
   topics:
