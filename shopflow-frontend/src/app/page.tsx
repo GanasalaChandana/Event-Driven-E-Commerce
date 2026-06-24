@@ -26,7 +26,7 @@ export default function Home() {
                 </Button>
               </Link>
               <Link href="/register">
-                <Button size="lg" variant="outline" className="text-white border-white hover:bg-white hover:text-slate-900">
+                <Button size="lg" className="bg-transparent border border-white text-white hover:bg-white hover:text-slate-900">
                   Get Started
                 </Button>
               </Link>
