@@ -7,7 +7,7 @@ Content-Type: application/json
   "password": "admin123"
 }
 
-@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJuYW1lIjoiQWRtaW4iLCJlbWFpbCI6ImFkbWluQHNob3BmbG93LmNvbSIsInVzZXJJZCI6ImYzOTY0MDkxLWI0N2ItNDNkMC05MWRiLTkxNmNiNWJjYjY2YyIsInJvbGUiOiJBRE1JTiIsInN1YiI6ImFkbWluQHNob3BmbG93LmNvbSIsImlhdCI6MTc4MTc4ODk2NywiZXhwIjoxNzgxODc1MzY3fQ.UCMidnPwt8KZ1oof6JBCC0bpQB1fJibnKlOFuS8JPN-GB-62kS-N_-dCk-OV62RR
+@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJyb2xlIjoiQURNSU4iLCJ1c2VySWQiOiJmMzk2NDA5MS1iNDdiLTQzZDAtOTFkYi05MTZjYjViY2I2NmMiLCJlbWFpbCI6ImFkbWluQHNob3BmbG93LmNvbSIsIm5hbWUiOiJBZG1pbiIsInN1YiI6ImFkbWluQHNob3BmbG93LmNvbSIsImlhdCI6MTc4MTgxNTY0NywiZXhwIjoxNzgxOTAyMDQ3fQ.FsvYLkxbiSSiTab6nElCUO7ZgEs-AFe7yneYWeDMQFys97FmYFe1pvSSyYTa2Nbz
 
 ###  ─────────────────────────────────────────────
 ###  PRODUCTS (Admin only)
@@ -33,7 +33,7 @@ GET https://event-driven-e-commerce.onrender.com/api/v1/products
 GET https://event-driven-e-commerce.onrender.com/api/v1/products?q=headphones
 
 ### Filter Products by category
-GET https://event-driven-e-commerce.onrender.com/api/v1/products?categoryId=PASTE_CATEGORY_ID_HERE
+GET https://event-driven-e-commerce.onrender.com/api/v1/products?categoryId=9129a5e4-99be-4720-b886-4bb0f01813cc
 
 ###  ─────────────────────────────────────────────
 ###  INVENTORY (Admin only)
@@ -102,7 +102,7 @@ Content-Type: application/json
   "password": "test1234"
 }
 
-@userToken = eyJhbGciOiJIUzM4NCJ9.eyJyb2xlIjoiVVNFUiIsInVzZXJJZCI6ImViNGQ4M2RlLTlhYjctNGQ3OS1hNDMyLTc1YTdkN2ExNGJiOCIsImVtYWlsIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwibmFtZSI6IkNoYW5kYW5hIiwic3ViIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwiaWF0IjoxNzgxODA0NTM2LCJleHAiOjE3ODE4OTA5MzZ9.guq5isY-CA3jko8exTEGGW4JHcjDRft1Sv8eZ03AGT_OxWHQEcigq5TDN5iYWvDA
+@userToken = eyJhbGciOiJIUzM4NCJ9.eyJyb2xlIjoiVVNFUiIsInVzZXJJZCI6ImViNGQ4M2RlLTlhYjctNGQ3OS1hNDMyLTc1YTdkN2ExNGJiOCIsImVtYWlsIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwibmFtZSI6IkNoYW5kYW5hIiwic3ViIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwiaWF0IjoxNzgxODE1Njk0LCJleHAiOjE3ODE5MDIwOTR9.wXjqKkXoe17Z7IeagxejoZD31mRlAla4VcTE9YXRyGIct8YidR2WBpl13juuYbg8
 
 ###  ─────────────────────────────────────────────
 ###  USER PROFILE
@@ -141,7 +141,7 @@ Authorization: Bearer {{userToken}}
 }
 
 ### Cancel Order (PENDING only — paste order ID from Place Order response)
-POST https://event-driven-e-commerce.onrender.com/api/v1/orders/e5b31b53-f6ec-4403-a669-76d1cdbb2155/cancel
+POST https://event-driven-e-commerce.onrender.com/api/v1/orders/d8fb8434-26d4-4a6f-bd22-edb93afeec40/cancel
 Authorization: Bearer {{userToken}}
 
 ### Get My Orders (as Chandana)
@@ -177,7 +177,7 @@ GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/PASTE_ORDER
 Authorization: Bearer {{adminToken}}
 
 ### Update order status (admin — paste order ID, set status to CONFIRMED or CANCELLED)
-PATCH https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/PASTE_ORDER_ID_HERE/status
+PATCH https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/297b5618-62b5-40a1-affc-bbad51575aff/status
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
@@ -204,3 +204,20 @@ Authorization: Bearer {{adminToken}}
 ### Get Admin's own orders
 GET https://event-driven-e-commerce.onrender.com/api/v1/orders
 Authorization: Bearer {{adminToken}}
+
+
+### Assign category to Wireless Headphones
+PUT https://event-driven-e-commerce.onrender.com/api/v1/products/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Wireless Headphones",
+  "description": "High quality noise-cancelling headphones",
+  "price": 99.99,
+  "sku": "WH-001",
+  "categoryId": "9129a5e4-99be-4720-b886-4bb0f01813cc"
+}
+
+### Get Wireless Headphones by ID
+GET https://event-driven-e-commerce.onrender.com/api/v1/products/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
