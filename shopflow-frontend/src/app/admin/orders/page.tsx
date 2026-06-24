@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import AdminLayout from "@/components/AdminLayout";
 import { getAllOrders, updateOrderStatus } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Package } from "lucide-react";
+import { Package, X } from "lucide-react";
+import { Order } from "@/lib/types";
 
 const statusColor: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-700",
@@ -22,6 +25,8 @@ export default function AdminOrdersPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [page, setPage] = useState(0);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-orders", statusFilter, page],
@@ -37,36 +42,101 @@ export default function AdminOrdersPage() {
     onError: () => toast.error("Failed to update order status"),
   });
 
+  // Client-side date filter
+  const filtered = useMemo(() => {
+    if (!data?.content) return [];
+    return data.content.filter((order: Order) => {
+      const created = new Date(order.createdAt);
+      if (fromDate && created < new Date(fromDate)) return false;
+      if (toDate && created > new Date(toDate + "T23:59:59")) return false;
+      return true;
+    });
+  }, [data, fromDate, toDate]);
+
+  const clearFilters = () => {
+    setFromDate("");
+    setToDate("");
+    setStatusFilter("ALL");
+    setPage(0);
+  };
+
+  const hasFilters = fromDate || toDate || statusFilter !== "ALL";
+
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-slate-900">Orders</h1>
-        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Orders</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-            <SelectItem value="CANCELLED">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Filters bar */}
+      <div className="flex flex-wrap items-end gap-3 mb-6">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-3xl font-bold text-slate-900">Orders</h1>
+        </div>
+
+        {/* Status filter */}
+        <div className="space-y-1">
+          <Label className="text-xs text-slate-500">Status</Label>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Orders</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Date range */}
+        <div className="space-y-1">
+          <Label className="text-xs text-slate-500">From</Label>
+          <Input
+            type="date"
+            className="w-36"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-slate-500">To</Label>
+          <Input
+            type="date"
+            className="w-36"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+          />
+        </div>
+
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-slate-500">
+            <X className="h-4 w-4 mr-1" /> Clear
+          </Button>
+        )}
       </div>
+
+      {/* Results count */}
+      {data && (
+        <p className="text-sm text-slate-500 mb-4">
+          Showing {filtered.length} of {data.totalElements} orders
+        </p>
+      )}
 
       {isLoading ? (
         <div className="space-y-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}</div>
-      ) : data?.content.length === 0 ? (
-        <p className="text-slate-400 text-center py-20">No orders found</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-slate-400 text-center py-20">No orders match your filters</p>
       ) : (
         <div className="space-y-4">
-          {data?.content.map((order) => (
+          {filtered.map((order) => (
             <Card key={order.id}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-sm font-mono">#{order.id.slice(0, 8).toUpperCase()}</CardTitle>
-                    <p className="text-xs text-slate-400 mt-1">{order.userEmail} · {new Date(order.createdAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {order.userEmail} · {new Date(order.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric", month: "short", day: "numeric"
+                      })}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor[order.status]}`}>

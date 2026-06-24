@@ -4,8 +4,9 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
+import { ThemeProvider } from "next-themes";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 
@@ -21,14 +22,16 @@ function AuthInit({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={geist.variable}>
+    <html lang="en" className={geist.variable} suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <QueryClientProvider client={queryClient}>
-          <AuthInit>
-            {children}
-            <Toaster richColors position="top-right" />
-          </AuthInit>
-        </QueryClientProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <QueryClientProvider client={queryClient}>
+            <AuthInit>
+              {children}
+              <Toaster richColors position="top-right" />
+            </AuthInit>
+          </QueryClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
