@@ -1,11 +1,36 @@
-# ShopFlow — E-Commerce REST API
+# ShopFlow — Full-Stack E-Commerce Platform
 
-A production-grade e-commerce backend built as a Spring Boot 3.x monolith that combines four domain services (User, Product, Order, Inventory) into a single deployable unit using `build-helper-maven-plugin`. Cross-module communication uses Spring `ApplicationEvent` with `@TransactionalEventListener` and `@Async`, with optional Kafka for distributed deployments.
+A production-grade full-stack e-commerce platform with a **Next.js frontend** and **Spring Boot microservices backend**. The backend combines four domain services (User, Product, Order, Inventory) into a single deployable monolith using `build-helper-maven-plugin`. Cross-module communication uses Spring `ApplicationEvent` with `@TransactionalEventListener` and `@Async`, with optional Kafka for distributed deployments.
 
+**Live App:** https://event-driven-e-commerce.vercel.app  
 **Live API:** https://event-driven-e-commerce.onrender.com  
 **Swagger UI:** https://event-driven-e-commerce.onrender.com/swagger-ui.html
 
-> The free Render instance spins down after inactivity. First request may take 30–60 seconds.
+> The free Render backend spins down after inactivity. First API request may take 30–60 seconds to wake up.
+
+---
+
+## Frontend (shopflow-frontend/)
+
+Built with **Next.js 14**, **Tailwind CSS**, and **shadcn/ui**. Connects to the Spring Boot backend via REST API.
+
+| Page | Description |
+|---|---|
+| `/` | Home page with hero and features |
+| `/products` | Product catalog with search, category filter, pagination |
+| `/products/[id]` | Product detail page with stock level and order button |
+| `/orders` | My orders with cancel button (user) |
+| `/orders/confirmation` | Order success screen |
+| `/profile` | Account details and order statistics |
+| `/login` / `/register` | Auth pages with JWT |
+| `/admin` | Dashboard with stats and recent orders |
+| `/admin/products` | Product CRUD |
+| `/admin/categories` | Category management |
+| `/admin/inventory` | Stock adjustment |
+| `/admin/orders` | All orders with status update |
+| `/admin/users` | All users |
+
+**Stack:** Next.js 14 · TypeScript · Tailwind CSS · shadcn/ui · React Query · Zustand · Axios
 
 ---
 
