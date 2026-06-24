@@ -4,6 +4,7 @@ import com.shopflow.user.entity.User;
 import com.shopflow.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,6 +18,9 @@ public class DataInitializer implements ApplicationRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${admin.password:admin123}")
+    private String adminPassword;
+
     @Override
     public void run(ApplicationArguments args) {
         String adminEmail = "admin@shopflow.com";
@@ -24,10 +28,10 @@ public class DataInitializer implements ApplicationRunner {
             userRepository.save(User.builder()
                     .name("Admin")
                     .email(adminEmail)
-                    .password(passwordEncoder.encode("admin123"))
+                    .password(passwordEncoder.encode(adminPassword))
                     .role(User.Role.ADMIN)
                     .build());
-            log.info("Default admin created: {} / admin123", adminEmail);
+            log.info("Default admin created: {}", adminEmail);
         }
     }
 }

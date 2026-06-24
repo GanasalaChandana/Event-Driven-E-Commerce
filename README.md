@@ -15,8 +15,9 @@ A production-grade full-stack e-commerce platform with a **Next.js frontend** an
 ### Demo Credentials
 | Role | Email | Password |
 |---|---|---|
-| Admin | `admin@shopflow.com` | `admin123` |
 | User | Register at `/register` | your choice |
+
+> Admin credentials are available on request.
 
 ---
 
