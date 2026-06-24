@@ -12,6 +12,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/categories")
@@ -34,5 +35,15 @@ public class CategoryController {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.create(request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id, Authentication auth) {
+        if (auth == null || auth.getAuthorities().stream()
+                .noneMatch(a -> a.equals(new SimpleGrantedAuthority("ROLE_ADMIN")))) {
+            return ResponseEntity.status(403).build();
+        }
+        categoryService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,5 +28,9 @@ public class CategoryService {
                 .description(request.getDescription())
                 .build();
         return CategoryResponse.from(categoryRepository.save(category));
+    }
+
+    public void delete(UUID id) {
+        categoryRepository.deleteById(id);
     }
 }
