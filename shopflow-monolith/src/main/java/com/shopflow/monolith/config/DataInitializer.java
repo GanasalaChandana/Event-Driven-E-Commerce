@@ -24,14 +24,21 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         String adminEmail = "admin@shopflow.com";
-        if (!userRepository.existsByEmail(adminEmail)) {
-            userRepository.save(User.builder()
-                    .name("Admin")
-                    .email(adminEmail)
-                    .password(passwordEncoder.encode(adminPassword))
-                    .role(User.Role.ADMIN)
-                    .build());
-            log.info("Default admin created: {}", adminEmail);
-        }
+        userRepository.findByEmail(adminEmail).ifPresentOrElse(
+            admin -> {
+                admin.setPassword(passwordEncoder.encode(adminPassword));
+                userRepository.save(admin);
+                log.info("Admin password synced from env var");
+            },
+            () -> {
+                userRepository.save(User.builder()
+                        .name("Admin")
+                        .email(adminEmail)
+                        .password(passwordEncoder.encode(adminPassword))
+                        .role(User.Role.ADMIN)
+                        .build());
+                log.info("Default admin created: {}", adminEmail);
+            }
+        );
     }
 }
