@@ -2,11 +2,21 @@
 
 A production-grade full-stack e-commerce platform with a **Next.js frontend** and **Spring Boot microservices backend**. The backend combines four domain services (User, Product, Order, Inventory) into a single deployable monolith using `build-helper-maven-plugin`. Cross-module communication uses Spring `ApplicationEvent` with `@TransactionalEventListener` and `@Async`, with optional Kafka for distributed deployments.
 
-**Live App:** https://event-driven-e-commerce.vercel.app  
-**Live API:** https://event-driven-e-commerce.onrender.com  
-**Swagger UI:** https://event-driven-e-commerce.onrender.com/swagger-ui.html
+## 🌐 Live Demo
 
-> The free Render backend spins down after inactivity. First API request may take 30–60 seconds to wake up.
+| | Link |
+|---|---|
+| 🛍️ **Frontend (Vercel)** | https://event-driven-e-commerce.vercel.app |
+| ⚙️ **REST API (Render)** | https://event-driven-e-commerce.onrender.com |
+| 📖 **Swagger UI** | https://event-driven-e-commerce.onrender.com/swagger-ui.html |
+
+> ⚠️ The free Render backend spins down after inactivity. First request may take **30–60 seconds** to wake up.
+
+### Demo Credentials
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@shopflow.com` | `admin123` |
+| User | Register at `/register` | your choice |
 
 ---
 
