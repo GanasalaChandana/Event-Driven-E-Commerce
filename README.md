@@ -21,6 +21,45 @@ A production-grade full-stack e-commerce platform with a **Next.js frontend** an
 
 ---
 
+## 🤖 AI Integration (MCP Server)
+
+ShopFlow includes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that lets Claude AI manage the store through natural language.
+
+### What you can ask Claude
+
+- *"Show me all pending orders"*
+- *"Get all products"*
+- *"Update inventory for product X to 50 units"*
+- *"Confirm order abc-123"*
+- *"Show me store statistics"*
+
+### Setup
+
+```bash
+cd shopflow-mcp
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+```
+
+Add to Claude Desktop config (`%APPDATA%\Claude\claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "shopflow": {
+      "command": "/path/to/shopflow-mcp/venv/Scripts/python.exe",
+      "args": ["/path/to/shopflow-mcp/server.py"],
+      "env": {
+        "SHOPFLOW_ADMIN_TOKEN": "your-admin-jwt-token"
+      }
+    }
+  }
+}
+```
+
+---
+
 ## Frontend (shopflow-frontend/)
 
 Built with **Next.js 14**, **Tailwind CSS**, and **shadcn/ui**. Connects to the Spring Boot backend via REST API.
