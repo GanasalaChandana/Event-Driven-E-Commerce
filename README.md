@@ -128,7 +128,7 @@ When Kafka is unavailable (Render free tier), fulfillment runs synchronously via
 
 | Layer | Technology |
 |---|---|
-| Language | Java 17 |
+| Language | Java 21 (Virtual Threads) |
 | Framework | Spring Boot 3.x |
 | Security | Spring Security 6 + JWT (JJWT 0.12) |
 | Database | PostgreSQL |
@@ -516,7 +516,7 @@ All errors follow [RFC 9457 Problem Details](https://datatracker.ietf.org/doc/ht
 
 ## Running Locally
 
-**Prerequisites:** Java 17, Maven 3.9+, Docker Desktop
+**Prerequisites:** Java 21, Maven 3.9+, Docker Desktop
 
 ### 1. Start infrastructure
 ```bash
