@@ -27,6 +27,8 @@ A production-grade full-stack e-commerce platform with a **Next.js frontend** an
 
 ShopFlow includes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that lets Claude AI manage the store through natural language.
 
+![ShopFlow MCP Demo](shopflow-mcp/demo.gif)
+
 ### What you can ask Claude
 
 - *"Show me all pending orders"*
