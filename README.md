@@ -1,5 +1,7 @@
 # ShopFlow — Full-Stack E-Commerce Platform
 
+[![CI](https://github.com/GanasalaChandana/Event-Driven-E-Commerce/actions/workflows/ci.yml/badge.svg)](https://github.com/GanasalaChandana/Event-Driven-E-Commerce/actions/workflows/ci.yml)
+
 A production-grade full-stack e-commerce platform with a **Next.js frontend** and **Spring Boot microservices backend**. The backend combines four domain services (User, Product, Order, Inventory) into a single deployable monolith using `build-helper-maven-plugin`. Cross-module communication uses Spring `ApplicationEvent` with `@TransactionalEventListener` and `@Async`, with optional Kafka for distributed deployments.
 
 ## 🌐 Live Demo
