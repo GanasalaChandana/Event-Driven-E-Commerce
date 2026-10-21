@@ -2,7 +2,6 @@ package com.shopflow.monolith.config;
 
 import com.shopflow.inventory.event.OrderCreatedEvent;
 import com.shopflow.inventory.service.InventoryService;
-import com.shopflow.order.dto.OrderRequest;
 import com.shopflow.order.event.OrderCancelledApplicationEvent;
 import com.shopflow.order.event.OrderPlacedApplicationEvent;
 import com.shopflow.order.event.OrderStatusChangedApplicationEvent;
@@ -19,6 +18,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Runs the order saga in-process for the monolith deployment:
+ * reserve stock → confirm (and commit the reservation) or cancel; release stock on cancellation.
+ * Every inventory step is idempotent, so a parallel Kafka path cannot double-count stock.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -32,10 +36,9 @@ public class SyncOrderFulfillmentService {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderPlaced(OrderPlacedApplicationEvent event) {
         UUID orderId = event.getOrderId();
-        OrderRequest request = event.getRequest();
         log.info("Sync fulfillment triggered for order {}", orderId);
 
-        List<OrderCreatedEvent.OrderItemEvent> items = request.getItems().stream()
+        List<OrderCreatedEvent.OrderItemEvent> items = event.getItems().stream()
                 .map(i -> OrderCreatedEvent.OrderItemEvent.builder()
                         .productId(i.getProductId())
                         .productName(i.getProductName())
@@ -45,26 +48,35 @@ public class SyncOrderFulfillmentService {
                 .toList();
 
         try {
-            boolean reserved = inventoryService.reserveStockSync(orderId, items);
-            if (reserved) {
-                orderService.confirmOrder(orderId);
-                log.info("Order {} CONFIRMED via sync fulfillment", orderId);
-                emailNotificationService.sendOrderConfirmation(
-                        orderId, event.getUserEmail(), event.getTotalAmount());
-            } else {
-                orderService.cancelOrder(orderId, "Insufficient stock");
+            if (inventoryService.reserveStockSync(orderId, items)) {
+                if (orderService.confirmOrder(orderId)) {
+                    inventoryService.commitReservation(orderId);
+                    log.info("Order {} CONFIRMED via sync fulfillment", orderId);
+                    emailNotificationService.sendOrderConfirmation(
+                            orderId, event.getUserEmail(), event.getTotalAmount());
+                } else {
+                    // The customer cancelled while we were reserving — give the stock back
+                    inventoryService.releaseReservation(orderId);
+                    log.info("Order {} was cancelled during fulfillment — stock released", orderId);
+                }
+            } else if (orderService.cancelOrder(orderId, "Insufficient stock")) {
                 log.warn("Order {} CANCELLED via sync fulfillment — insufficient stock", orderId);
                 emailNotificationService.sendOrderCancellation(
                         orderId, event.getUserEmail(), "Insufficient stock");
             }
         } catch (Exception e) {
-            log.error("Sync fulfillment failed for order {}: {}", orderId, e.getMessage());
+            log.error("Sync fulfillment failed for order {}", orderId, e);
         }
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderCancelledByUser(OrderCancelledApplicationEvent event) {
+        try {
+            inventoryService.releaseReservation(event.getOrderId());
+        } catch (Exception e) {
+            log.error("Failed to release stock for cancelled order {}", event.getOrderId(), e);
+        }
         log.info("Sending cancellation email for order {} cancelled by customer", event.getOrderId());
         emailNotificationService.sendOrderCancellation(
                 event.getOrderId(), event.getUserEmail(), "Cancelled by customer");
@@ -74,6 +86,16 @@ public class SyncOrderFulfillmentService {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAdminStatusChange(OrderStatusChangedApplicationEvent event) {
         log.info("Admin changed order {} to {}", event.getOrderId(), event.getNewStatus());
+        try {
+            if (event.getNewStatus() == OrderStatus.CONFIRMED) {
+                inventoryService.commitReservation(event.getOrderId());
+            } else if (event.getNewStatus() == OrderStatus.CANCELLED) {
+                inventoryService.releaseReservation(event.getOrderId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to update stock for order {}", event.getOrderId(), e);
+        }
+
         if (event.getNewStatus() == OrderStatus.CONFIRMED) {
             emailNotificationService.sendOrderConfirmation(event.getOrderId(), event.getUserEmail(), null);
         } else if (event.getNewStatus() == OrderStatus.CANCELLED) {

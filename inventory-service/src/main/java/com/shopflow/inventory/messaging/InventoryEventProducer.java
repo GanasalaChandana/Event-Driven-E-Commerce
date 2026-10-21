@@ -7,6 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -22,20 +26,36 @@ public class InventoryEventProducer {
     private String failedTopic;
 
     public void publishInventoryReserved(InventoryReservedEvent event) {
-        try {
-            kafkaTemplate.send(reservedTopic, event.getOrderId().toString(), event);
-            log.info("Published inventory.reserved for order {}", event.getOrderId());
-        } catch (Exception e) {
-            log.warn("Kafka unavailable, skipping inventory.reserved event: {}", e.getMessage());
-        }
+        sendAfterCommit(reservedTopic, event.getOrderId(), event);
     }
 
     public void publishInventoryFailed(InventoryFailedEvent event) {
+        sendAfterCommit(failedTopic, event.getOrderId(), event);
+    }
+
+    // Only announce a reservation once it is actually committed to the database
+    private void sendAfterCommit(String topic, UUID orderId, Object event) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    send(topic, orderId, event);
+                }
+            });
+        } else {
+            send(topic, orderId, event);
+        }
+    }
+
+    private void send(String topic, UUID orderId, Object event) {
         try {
-            kafkaTemplate.send(failedTopic, event.getOrderId().toString(), event);
-            log.info("Published inventory.failed for order {}", event.getOrderId());
+            kafkaTemplate.send(topic, orderId.toString(), event)
+                    .whenComplete((result, ex) -> {
+                        if (ex != null) log.warn("Kafka unavailable, skipping {} for order {}: {}", topic, orderId, ex.getMessage());
+                        else log.info("Published {} for order {}", topic, orderId);
+                    });
         } catch (Exception e) {
-            log.warn("Kafka unavailable, skipping inventory.failed event: {}", e.getMessage());
+            log.warn("Kafka send threw synchronously for {} (order {}): {}", topic, orderId, e.getMessage());
         }
     }
 }

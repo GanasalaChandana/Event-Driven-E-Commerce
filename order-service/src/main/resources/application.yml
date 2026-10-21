@@ -31,9 +31,8 @@ spring:
       group-id: order-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "com.shopflow.*"
+      # JSON is mapped onto listener parameter types by the JsonMessageConverter bean
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
 kafka:
   topics:
@@ -42,6 +41,11 @@ kafka:
     inventory-failed: inventory.failed
     order-confirmed: order.confirmed
     order-cancelled: order.cancelled
+    inventory-release: inventory.release
+
+services:
+  product:
+    url: ${PRODUCT_SERVICE_URL:http://product-service:8082}
 
 eureka:
   client:

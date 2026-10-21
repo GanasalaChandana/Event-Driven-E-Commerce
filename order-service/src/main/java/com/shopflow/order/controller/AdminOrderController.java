@@ -1,4 +1,4 @@
-package com.shopflow.monolith.controller;
+package com.shopflow.order.controller;
 
 import com.shopflow.order.dto.OrderResponse;
 import com.shopflow.order.dto.OrderStatusUpdateRequest;

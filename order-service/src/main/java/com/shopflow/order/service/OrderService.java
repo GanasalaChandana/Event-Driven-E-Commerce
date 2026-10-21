@@ -1,18 +1,23 @@
 package com.shopflow.order.service;
 
+import com.shopflow.order.catalog.ProductCatalog;
+import com.shopflow.order.dto.OrderItemRequest;
 import com.shopflow.order.dto.OrderRequest;
 import com.shopflow.order.dto.OrderResponse;
 import com.shopflow.order.entity.Order;
 import com.shopflow.order.entity.OrderItem;
 import com.shopflow.order.entity.OrderStatus;
+import com.shopflow.order.event.InventoryReleaseEvent;
+import com.shopflow.order.event.OrderCancelledApplicationEvent;
 import com.shopflow.order.event.OrderCancelledEvent;
 import com.shopflow.order.event.OrderConfirmedEvent;
 import com.shopflow.order.event.OrderCreatedEvent;
 import com.shopflow.order.event.OrderPlacedApplicationEvent;
-import com.shopflow.order.event.OrderCancelledApplicationEvent;
 import com.shopflow.order.event.OrderStatusChangedApplicationEvent;
+import com.shopflow.order.exception.InvalidOrderStatusTransitionException;
 import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
+import com.shopflow.order.exception.ProductUnavailableException;
 import com.shopflow.order.messaging.OrderEventProducer;
 import com.shopflow.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,9 +30,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Order lifecycle: PENDING → CONFIRMED → (CANCELLED), or PENDING → CANCELLED.
+ * CANCELLED is terminal. Every transition takes a row lock and is a no-op when the
+ * order is no longer in the expected state, so redelivered events are harmless.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,18 +49,28 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderEventProducer eventProducer;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ProductCatalog productCatalog;
 
     @Transactional
     public OrderResponse placeOrder(UUID userId, String userEmail, OrderRequest request) {
-        // Build order items and calculate total
-        List<OrderItem> items = request.getItems().stream()
-                .map(i -> OrderItem.builder()
-                        .productId(i.getProductId())
-                        .productName(i.getProductName())
-                        .quantity(i.getQuantity())
-                        .unitPrice(i.getUnitPrice())
-                        .build())
-                .toList();
+        // Merge duplicate lines for the same product so stock checks see the real total
+        Map<UUID, Integer> quantities = new LinkedHashMap<>();
+        for (OrderItemRequest line : request.getItems()) {
+            quantities.merge(line.getProductId(), line.getQuantity(), Integer::sum);
+        }
+
+        // Names and prices always come from the catalog — never from the client
+        List<OrderItem> items = new ArrayList<>();
+        for (Map.Entry<UUID, Integer> entry : quantities.entrySet()) {
+            ProductCatalog.ProductSnapshot product = productCatalog.findActiveProduct(entry.getKey())
+                    .orElseThrow(() -> new ProductUnavailableException(entry.getKey()));
+            items.add(OrderItem.builder()
+                    .productId(product.id())
+                    .productName(product.name())
+                    .quantity(entry.getValue())
+                    .unitPrice(product.price())
+                    .build());
+        }
 
         BigDecimal total = items.stream()
                 .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
@@ -60,7 +83,6 @@ public class OrderService {
                 .totalAmount(total)
                 .build();
 
-        // Link items to order
         items.forEach(item -> {
             item.setOrder(order);
             order.getItems().add(item);
@@ -69,36 +91,40 @@ public class OrderService {
         Order saved = orderRepository.save(order);
         log.info("Order {} placed by user {} — PENDING", saved.getId(), userId);
 
-        // Publish Spring application event — picked up by SyncOrderFulfillmentService
-        // in the monolith for in-JVM confirmation when Kafka is unavailable
-        applicationEventPublisher.publishEvent(
-                new OrderPlacedApplicationEvent(this, saved.getId(), userEmail, total, request));
+        List<OrderCreatedEvent.OrderItemEvent> itemEvents = items.stream()
+                .map(i -> OrderCreatedEvent.OrderItemEvent.builder()
+                        .productId(i.getProductId())
+                        .productName(i.getProductName())
+                        .quantity(i.getQuantity())
+                        .unitPrice(i.getUnitPrice())
+                        .build())
+                .toList();
 
-        // Publish to Kafka — Inventory Service will pick this up when Kafka is available
+        // In-JVM event — the monolith fulfils the order synchronously after commit
+        applicationEventPublisher.publishEvent(
+                new OrderPlacedApplicationEvent(this, saved.getId(), userEmail, total, itemEvents));
+
+        // Kafka event (sent after commit) — Inventory Service reserves stock
         eventProducer.publishOrderCreated(OrderCreatedEvent.builder()
                 .orderId(saved.getId())
                 .userId(userId)
                 .userEmail(userEmail)
                 .totalAmount(total)
                 .createdAt(LocalDateTime.now())
-                .items(request.getItems().stream()
-                        .map(i -> OrderCreatedEvent.OrderItemEvent.builder()
-                                .productId(i.getProductId())
-                                .productName(i.getProductName())
-                                .quantity(i.getQuantity())
-                                .unitPrice(i.getUnitPrice())
-                                .build())
-                        .toList())
+                .items(itemEvents)
                 .build());
 
         return OrderResponse.from(saved);
     }
 
-    // Called by Kafka consumer when Inventory Service confirms stock
+    /** Stock was reserved: PENDING → CONFIRMED. Returns false if the order was no longer PENDING. */
     @Transactional
-    public void confirmOrder(UUID orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
+    public boolean confirmOrder(UUID orderId) {
+        Order order = lockOrder(orderId);
+        if (order.getStatus() != OrderStatus.PENDING) {
+            log.info("Order {} is {} — ignoring confirmation", orderId, order.getStatus());
+            return false;
+        }
 
         order.setStatus(OrderStatus.CONFIRMED);
         orderRepository.save(order);
@@ -111,25 +137,42 @@ public class OrderService {
                 .totalAmount(order.getTotalAmount())
                 .confirmedAt(LocalDateTime.now())
                 .build());
+        return true;
     }
 
-    // Called by Kafka consumer when Inventory Service reports insufficient stock
+    /**
+     * Kafka: inventory.reserved. Confirms the order, or — if the customer cancelled while
+     * the reservation was in flight — asks Inventory Service to give the stock back.
+     */
     @Transactional
-    public void cancelOrder(UUID orderId, String reason) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
+    public void handleInventoryReserved(UUID orderId) {
+        if (confirmOrder(orderId)) {
+            return;
+        }
+        Order order = lockOrder(orderId);
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            eventProducer.publishInventoryRelease(InventoryReleaseEvent.builder()
+                    .orderId(orderId)
+                    .reason("Order was cancelled before stock was reserved")
+                    .build());
+        }
+    }
+
+    /** Stock could not be reserved: PENDING → CANCELLED. Returns false if the order was no longer PENDING. */
+    @Transactional
+    public boolean cancelOrder(UUID orderId, String reason) {
+        Order order = lockOrder(orderId);
+        if (order.getStatus() != OrderStatus.PENDING) {
+            log.info("Order {} is {} — ignoring cancellation ({})", orderId, order.getStatus(), reason);
+            return false;
+        }
 
         order.setStatus(OrderStatus.CANCELLED);
         orderRepository.save(order);
         log.info("Order {} CANCELLED — {}", orderId, reason);
 
-        eventProducer.publishOrderCancelled(OrderCancelledEvent.builder()
-                .orderId(order.getId())
-                .userId(order.getUserId())
-                .userEmail(order.getUserEmail())
-                .reason(reason)
-                .cancelledAt(LocalDateTime.now())
-                .build());
+        eventProducer.publishOrderCancelled(cancelledEvent(order, reason));
+        return true;
     }
 
     public Page<OrderResponse> getMyOrders(UUID userId, Pageable pageable) {
@@ -144,7 +187,8 @@ public class OrderService {
 
     @Transactional
     public OrderResponse cancelMyOrder(UUID orderId, UUID userId) {
-        Order order = orderRepository.findByIdAndUserId(orderId, userId)
+        Order order = orderRepository.findWithLockById(orderId)
+                .filter(o -> o.getUserId().equals(userId))
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
 
         if (order.getStatus() != OrderStatus.PENDING) {
@@ -156,17 +200,9 @@ public class OrderService {
         orderRepository.save(order);
         log.info("Order {} CANCELLED by user {}", orderId, userId);
 
-        try {
-            eventProducer.publishOrderCancelled(OrderCancelledEvent.builder()
-                    .orderId(order.getId())
-                    .userId(order.getUserId())
-                    .userEmail(order.getUserEmail())
-                    .reason("Cancelled by customer")
-                    .cancelledAt(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            log.warn("Kafka publish failed for cancelled order {}: {}", orderId, e.getMessage());
-        }
+        eventProducer.publishOrderCancelled(cancelledEvent(order, "Cancelled by customer"));
+        eventProducer.publishInventoryRelease(InventoryReleaseEvent.builder()
+                .orderId(orderId).reason("Cancelled by customer").build());
 
         applicationEventPublisher.publishEvent(
                 new OrderCancelledApplicationEvent(this, order.getId(), order.getUserEmail()));
@@ -174,14 +210,39 @@ public class OrderService {
         return OrderResponse.from(order);
     }
 
+    /**
+     * Admin override. Allowed: PENDING → CONFIRMED, PENDING/CONFIRMED → CANCELLED.
+     * Setting the current status again is a no-op; nothing leaves CANCELLED.
+     */
     @Transactional
     public OrderResponse updateOrderStatus(UUID orderId, OrderStatus newStatus) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        Order order = lockOrder(orderId);
+        OrderStatus current = order.getStatus();
+
+        if (current == newStatus) {
+            return OrderResponse.from(order);
+        }
+        if (current == OrderStatus.CANCELLED || newStatus == OrderStatus.PENDING) {
+            throw new InvalidOrderStatusTransitionException(orderId, current, newStatus);
+        }
 
         order.setStatus(newStatus);
         orderRepository.save(order);
-        log.info("Order {} status updated to {} by admin", orderId, newStatus);
+        log.info("Order {} status updated {} -> {} by admin", orderId, current, newStatus);
+
+        if (newStatus == OrderStatus.CONFIRMED) {
+            eventProducer.publishOrderConfirmed(OrderConfirmedEvent.builder()
+                    .orderId(order.getId())
+                    .userId(order.getUserId())
+                    .userEmail(order.getUserEmail())
+                    .totalAmount(order.getTotalAmount())
+                    .confirmedAt(LocalDateTime.now())
+                    .build());
+        } else {
+            eventProducer.publishOrderCancelled(cancelledEvent(order, "Cancelled by admin"));
+            eventProducer.publishInventoryRelease(InventoryReleaseEvent.builder()
+                    .orderId(orderId).reason("Cancelled by admin").build());
+        }
 
         applicationEventPublisher.publishEvent(
                 new OrderStatusChangedApplicationEvent(this, order.getId(), order.getUserEmail(), newStatus));
@@ -201,5 +262,20 @@ public class OrderService {
         return orderRepository.findById(orderId)
                 .map(OrderResponse::from)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+
+    private Order lockOrder(UUID orderId) {
+        return orderRepository.findWithLockById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+
+    private static OrderCancelledEvent cancelledEvent(Order order, String reason) {
+        return OrderCancelledEvent.builder()
+                .orderId(order.getId())
+                .userId(order.getUserId())
+                .userEmail(order.getUserEmail())
+                .reason(reason)
+                .cancelledAt(LocalDateTime.now())
+                .build();
     }
 }

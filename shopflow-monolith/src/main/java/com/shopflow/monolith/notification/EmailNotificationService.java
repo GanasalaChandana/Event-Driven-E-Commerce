@@ -49,6 +49,10 @@ public class EmailNotificationService {
                 "You can now browse products and place orders at:\n" +
                 "https://event-driven-e-commerce.onrender.com\n\n" +
                 "— The ShopFlow Team";
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("RESEND_API_KEY not set — skipping welcome email");
+            return;
+        }
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -79,6 +83,10 @@ public class EmailNotificationService {
     }
 
     private void send(String toEmail, String subject, String text, UUID orderId) {
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("RESEND_API_KEY not set — skipping email for order {}", orderId);
+            return;
+        }
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);

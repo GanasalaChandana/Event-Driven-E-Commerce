@@ -1,8 +1,11 @@
 package com.shopflow.monolith.exception;
 
+import com.shopflow.inventory.exception.InvalidStockAdjustmentException;
 import com.shopflow.inventory.exception.InventoryNotFoundException;
+import com.shopflow.order.exception.InvalidOrderStatusTransitionException;
 import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
+import com.shopflow.order.exception.ProductUnavailableException;
 import com.shopflow.product.exception.DuplicateSkuException;
 import com.shopflow.product.exception.ProductNotFoundException;
 import com.shopflow.user.exception.EmailAlreadyExistsException;
@@ -72,6 +75,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderCancellationException.class)
     ProblemDetail handleOrderCancellation(OrderCancellationException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidOrderStatusTransitionException.class)
+    ProblemDetail handleInvalidTransition(InvalidOrderStatusTransitionException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(ProductUnavailableException.class)
+    ProblemDetail handleProductUnavailable(ProductUnavailableException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidStockAdjustmentException.class)
+    ProblemDetail handleInvalidStockAdjustment(InvalidStockAdjustmentException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 

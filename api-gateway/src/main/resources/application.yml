@@ -11,50 +11,37 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        # ── User Service ──────────────────────────────────────────────────
-        - id: user-service-public
+        # Every route runs AuthFilter, which decides per method + path whether a JWT is needed
+        # (see gateway.public-paths / gateway.public-read-paths below) and always strips
+        # client-supplied X-User-* headers before forwarding.
+        - id: user-service-auth
           uri: lb://user-service
           predicates:
             - Path=/api/v1/auth/**
-          # No auth filter — login/register are public
+          filters:
+            - AuthFilter
 
-        - id: user-service-protected
+        - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/v1/users/**
+            - Path=/api/v1/users/**,/api/v1/admin/users/**
           filters:
             - AuthFilter
 
-        # ── Product Service ───────────────────────────────────────────────
-        - id: product-service-public
+        - id: product-service
           uri: lb://product-service
           predicates:
-            - Path=/api/v1/products/**
-            - Method=GET
-          # GET products are public (no auth needed to browse)
-
-        - id: product-service-protected
-          uri: lb://product-service
-          predicates:
-            - Path=/api/v1/products/**
+            - Path=/api/v1/products/**,/api/v1/categories/**
           filters:
             - AuthFilter
 
-        # ── Category Service (public — part of product-service) ───────────
-        - id: category-service-public
-          uri: lb://product-service
-          predicates:
-            - Path=/api/v1/categories/**
-
-        # ── Order Service ─────────────────────────────────────────────────
         - id: order-service
           uri: lb://order-service
           predicates:
-            - Path=/api/v1/orders/**
+            - Path=/api/v1/orders/**,/api/v1/admin/orders/**
           filters:
             - AuthFilter
 
-        # ── Inventory Service ─────────────────────────────────────────────
         - id: inventory-service
           uri: lb://inventory-service
           predicates:
@@ -66,13 +53,16 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
 
-# Public paths that bypass the AuthFilter
 gateway:
+  # No JWT needed for any method
   public-paths:
     - /api/v1/auth/
+    - /actuator
+  # No JWT needed for GET/HEAD/OPTIONS only (browsing); writes always require a valid token
+  public-read-paths:
     - /api/v1/products
     - /api/v1/categories
-    - /actuator
+    - /api/v1/inventory
 
 eureka:
   client:
@@ -85,7 +75,7 @@ management:
       probability: 1.0
   zipkin:
     tracing:
-      endpoint: http://localhost:9411/api/v2/spans
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
   endpoints:
     web:
       exposure:

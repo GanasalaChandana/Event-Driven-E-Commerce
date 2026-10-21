@@ -104,7 +104,7 @@ components:
       required: [productId, productName, quantityToAdd]
       properties:
         productId: { type: string, format: uuid }
-        productName: { type: string, example: Wireless Headphones }
+        productName: { type: string, example: Wireless Headphones, deprecated: true, description: Ignored — the server uses the catalogue name }
         quantityToAdd: { type: integer, minimum: 1, example: 100 }
 
     InventoryResponse:
@@ -119,12 +119,12 @@ components:
 
     OrderItemRequest:
       type: object
-      required: [productId, productName, quantity, unitPrice]
+      required: [productId, quantity]
       properties:
         productId: { type: string, format: uuid }
-        productName: { type: string, example: Wireless Headphones }
+        productName: { type: string, example: Wireless Headphones, deprecated: true, description: Ignored — the server uses the catalogue name }
         quantity: { type: integer, minimum: 1, example: 2 }
-        unitPrice: { type: number, example: 99.99 }
+        unitPrice: { type: number, example: 99.99, deprecated: true, description: Ignored — the server uses the catalogue price }
 
     OrderRequest:
       type: object

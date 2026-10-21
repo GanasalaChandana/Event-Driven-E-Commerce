@@ -67,7 +67,7 @@ public class EmailService {
     }
 
     // User-controlled values (names, reasons) must never be injected into HTML unescaped
-    static String escape(String value) {
+    public static String escape(String value) {
         if (value == null) return "";
         StringBuilder out = new StringBuilder(value.length());
         for (char c : value.toCharArray()) {

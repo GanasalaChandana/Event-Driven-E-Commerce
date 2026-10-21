@@ -17,6 +17,7 @@ public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
 
     // Pessimistic lock — prevents concurrent over-reservation of the same product
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT i FROM Inventory i WHERE i.productId IN :productIds")
+    // Ordered so concurrent transactions always lock rows in the same order (no deadlocks)
+    @Query("SELECT i FROM Inventory i WHERE i.productId IN :productIds ORDER BY i.productId")
     List<Inventory> findAllByProductIdInWithLock(@Param("productIds") List<UUID> productIds);
 }

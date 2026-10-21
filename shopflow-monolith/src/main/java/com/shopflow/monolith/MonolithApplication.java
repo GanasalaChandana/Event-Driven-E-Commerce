@@ -49,7 +49,9 @@ import org.springframework.scheduling.annotation.EnableAsync;
             pattern = {
                 "com\\.shopflow\\.(user|product|order|inventory)\\.config\\.SecurityConfig",
                 "com\\.shopflow\\.(user|product|order|inventory)\\.config\\.KafkaConfig",
-                "com\\.shopflow\\.(user|product|order|inventory)\\.exception\\.GlobalExceptionHandler"
+                "com\\.shopflow\\.(user|product|order|inventory)\\.exception\\.GlobalExceptionHandler",
+                // Microservices-only HTTP client; the monolith uses LocalProductCatalog
+                "com\\.shopflow\\.order\\.config\\.ProductCatalogClientConfig"
             }
         )
     }

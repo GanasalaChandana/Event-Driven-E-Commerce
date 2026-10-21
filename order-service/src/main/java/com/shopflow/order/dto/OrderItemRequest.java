@@ -1,7 +1,7 @@
 package com.shopflow.order.dto;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -14,12 +14,13 @@ public class OrderItemRequest {
     @NotNull(message = "Product ID is required")
     private UUID productId;
 
-    @NotBlank(message = "Product name is required")
+    /** Ignored — the product name is looked up server-side. Kept for backward compatibility. */
     private String productName;
 
     @Min(value = 1, message = "Quantity must be at least 1")
+    @Max(value = 1000, message = "Quantity must be at most 1000")
     private int quantity;
 
-    @NotNull(message = "Unit price is required")
+    /** Ignored — the price is looked up server-side. Kept for backward compatibility. */
     private BigDecimal unitPrice;
 }

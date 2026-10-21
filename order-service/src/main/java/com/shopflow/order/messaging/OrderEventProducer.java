@@ -1,5 +1,6 @@
 package com.shopflow.order.messaging;
 
+import com.shopflow.order.event.InventoryReleaseEvent;
 import com.shopflow.order.event.OrderCancelledEvent;
 import com.shopflow.order.event.OrderConfirmedEvent;
 import com.shopflow.order.event.OrderCreatedEvent;
@@ -8,6 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -25,39 +30,52 @@ public class OrderEventProducer {
     @Value("${kafka.topics.order-cancelled}")
     private String orderCancelledTopic;
 
+    @Value("${kafka.topics.inventory-release}")
+    private String inventoryReleaseTopic;
+
     public void publishOrderCreated(OrderCreatedEvent event) {
-        try {
-            kafkaTemplate.send(orderCreatedTopic, event.getOrderId().toString(), event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) log.warn("Kafka unavailable, skipping order.created: {}", ex.getMessage());
-                        else log.info("Published order.created for order {}", event.getOrderId());
-                    });
-        } catch (Exception e) {
-            log.warn("Kafka send threw synchronously for order.created: {}", e.getMessage());
-        }
+        sendAfterCommit(orderCreatedTopic, event.getOrderId(), event);
     }
 
     public void publishOrderConfirmed(OrderConfirmedEvent event) {
-        try {
-            kafkaTemplate.send(orderConfirmedTopic, event.getOrderId().toString(), event)
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) log.warn("Kafka unavailable, skipping order.confirmed: {}", ex.getMessage());
-                        else log.info("Published order.confirmed for order {}", event.getOrderId());
-                    });
-        } catch (Exception e) {
-            log.warn("Kafka send threw synchronously for order.confirmed: {}", e.getMessage());
-        }
+        sendAfterCommit(orderConfirmedTopic, event.getOrderId(), event);
     }
 
     public void publishOrderCancelled(OrderCancelledEvent event) {
+        sendAfterCommit(orderCancelledTopic, event.getOrderId(), event);
+    }
+
+    public void publishInventoryRelease(InventoryReleaseEvent event) {
+        sendAfterCommit(inventoryReleaseTopic, event.getOrderId(), event);
+    }
+
+    /**
+     * Events describe state that is only real once the DB transaction commits. Sending
+     * inside the transaction lets consumers react to an order that doesn't exist yet
+     * (or never will, if the transaction rolls back), so defer the send to afterCommit.
+     */
+    private void sendAfterCommit(String topic, UUID orderId, Object event) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    send(topic, orderId, event);
+                }
+            });
+        } else {
+            send(topic, orderId, event);
+        }
+    }
+
+    private void send(String topic, UUID orderId, Object event) {
         try {
-            kafkaTemplate.send(orderCancelledTopic, event.getOrderId().toString(), event)
+            kafkaTemplate.send(topic, orderId.toString(), event)
                     .whenComplete((result, ex) -> {
-                        if (ex != null) log.warn("Kafka unavailable, skipping order.cancelled: {}", ex.getMessage());
-                        else log.info("Published order.cancelled for order {}", event.getOrderId());
+                        if (ex != null) log.warn("Kafka unavailable, skipping {} for order {}: {}", topic, orderId, ex.getMessage());
+                        else log.info("Published {} for order {}", topic, orderId);
                     });
         } catch (Exception e) {
-            log.warn("Kafka send threw synchronously for order.cancelled: {}", e.getMessage());
+            log.warn("Kafka send threw synchronously for {} (order {}): {}", topic, orderId, e.getMessage());
         }
     }
 }

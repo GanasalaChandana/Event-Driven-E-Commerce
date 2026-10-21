@@ -50,4 +50,11 @@ class EmailServiceTest {
         // Should swallow the exception, not propagate it
         emailService.sendOrderCancelled("user@example.com", "ORDER-456", "Out of stock");
     }
+
+    @Test
+    void escape_neutralisesHtml() {
+        org.assertj.core.api.Assertions.assertThat(EmailService.escape("<script>alert('x')</script> & \"q\""))
+                .isEqualTo("&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt; &amp; &quot;q&quot;");
+        org.assertj.core.api.Assertions.assertThat(EmailService.escape(null)).isEmpty();
+    }
 }

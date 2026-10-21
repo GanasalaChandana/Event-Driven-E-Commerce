@@ -1,4 +1,4 @@
-package com.shopflow.monolith.controller;
+package com.shopflow.user.controller;
 
 import com.shopflow.user.dto.UserResponse;
 import com.shopflow.user.service.UserService;

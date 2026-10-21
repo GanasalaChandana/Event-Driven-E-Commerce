@@ -14,9 +14,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Slf4j
@@ -32,9 +35,12 @@ public class GatewayHeaderFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain chain)
             throws ServletException, IOException {
 
+        // Clients must never be able to supply their own identity headers
+        HttpServletRequest sanitized = new HeaderInjectingWrapper(request, null, null, null);
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            chain.doFilter(request, response);
+            chain.doFilter(sanitized, response);
             return;
         }
 
@@ -54,38 +60,49 @@ public class GatewayHeaderFilter extends OncePerRequestFilter {
             log.debug("Could not extract gateway headers from JWT: {}", e.getMessage());
         }
 
-        chain.doFilter(request, response);
+        chain.doFilter(sanitized, response);
     }
 
+    /** Overrides X-User-* with verified values — or hides them entirely when the values are null. */
     private static class HeaderInjectingWrapper extends HttpServletRequestWrapper {
 
-        private final Map<String, String> extraHeaders;
+        private static final List<String> IDENTITY_HEADERS = List.of("X-User-Id", "X-User-Email", "X-User-Role");
+
+        private final Map<String, String> verified = new HashMap<>();
 
         HeaderInjectingWrapper(HttpServletRequest request, String userId, String email, String role) {
             super(request);
-            extraHeaders = new HashMap<>();
-            extraHeaders.put("X-User-Id", userId);
-            extraHeaders.put("X-User-Email", email);
-            extraHeaders.put("X-User-Role", role);
+            if (userId != null) verified.put("x-user-id", userId);
+            if (email != null) verified.put("x-user-email", email);
+            if (role != null) verified.put("x-user-role", role);
+        }
+
+        private static boolean isIdentityHeader(String name) {
+            return name != null && IDENTITY_HEADERS.stream().anyMatch(h -> h.equalsIgnoreCase(name));
         }
 
         @Override
         public String getHeader(String name) {
-            String val = extraHeaders.get(name);
-            return val != null ? val : super.getHeader(name);
+            if (isIdentityHeader(name)) return verified.get(name.toLowerCase(Locale.ROOT));
+            return super.getHeader(name);
         }
 
         @Override
         public Enumeration<String> getHeaders(String name) {
-            String val = extraHeaders.get(name);
-            if (val != null) return Collections.enumeration(Collections.singletonList(val));
+            if (isIdentityHeader(name)) {
+                String val = verified.get(name.toLowerCase(Locale.ROOT));
+                return val == null ? Collections.emptyEnumeration() : Collections.enumeration(List.of(val));
+            }
             return super.getHeaders(name);
         }
 
         @Override
         public Enumeration<String> getHeaderNames() {
-            java.util.List<String> names = Collections.list(super.getHeaderNames());
-            names.addAll(extraHeaders.keySet());
+            List<String> names = new ArrayList<>();
+            for (String n : Collections.list(super.getHeaderNames())) {
+                if (!isIdentityHeader(n)) names.add(n);
+            }
+            verified.keySet().forEach(names::add);
             return Collections.enumeration(names);
         }
     }
