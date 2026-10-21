@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Map;
 
 @Slf4j
@@ -43,18 +45,24 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new EmailAlreadyExistsException(request.getEmail());
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new EmailAlreadyExistsException(email);
         }
 
         User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
+                .name(request.getName().trim())
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(User.Role.USER)
                 .build();
 
-        user = userRepository.save(user);
+        try {
+            // Flush now so a concurrent registration with the same email surfaces as 409, not 500
+            user = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new EmailAlreadyExistsException(email);
+        }
         log.info("User registered: {}", user.getEmail());
 
         // Publish event — fire and forget, ignore failures when Kafka is unavailable
@@ -81,13 +89,18 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        String email = normalizeEmail(request.getEmail());
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(email, request.getPassword())
         );
 
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
         String token = generateToken(user);
         return new AuthResponse(token, UserResponse.from(user));
+    }
+
+    private static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String generateToken(User user) {

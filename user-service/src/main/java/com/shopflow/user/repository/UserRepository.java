@@ -9,4 +9,8 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
+
+    // Emails are compared case-insensitively so "Alice@x.com" and "alice@x.com" are the same account
+    Optional<User> findByEmailIgnoreCase(String email);
+    boolean existsByEmailIgnoreCase(String email);
 }

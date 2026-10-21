@@ -1,20 +1,29 @@
+# Works with the VS Code "REST Client" extension.
+# Fill in the variables below locally — never commit real passwords or tokens.
+@baseUrl = https://event-driven-e-commerce.onrender.com
+@adminEmail = admin@shopflow.com
+@adminPassword = REPLACE_ME
+@userEmail = user@example.com
+@userPassword = REPLACE_ME
+
 ### Login as Admin
-POST https://event-driven-e-commerce.onrender.com/api/v1/auth/login
+# @name adminLogin
+POST {{baseUrl}}/api/v1/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@shopflow.com",
-  "password": "admin123"
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
 }
 
-@adminToken = eyJhbGciOiJIUzM4NCJ9.eyJyb2xlIjoiQURNSU4iLCJ1c2VySWQiOiJmMzk2NDA5MS1iNDdiLTQzZDAtOTFkYi05MTZjYjViY2I2NmMiLCJlbWFpbCI6ImFkbWluQHNob3BmbG93LmNvbSIsIm5hbWUiOiJBZG1pbiIsInN1YiI6ImFkbWluQHNob3BmbG93LmNvbSIsImlhdCI6MTc4MTgxNTY0NywiZXhwIjoxNzgxOTAyMDQ3fQ.FsvYLkxbiSSiTab6nElCUO7ZgEs-AFe7yneYWeDMQFys97FmYFe1pvSSyYTa2Nbz
+@adminToken = {{adminLogin.response.body.token}}
 
 ###  ─────────────────────────────────────────────
 ###  PRODUCTS (Admin only)
 ###  ─────────────────────────────────────────────
 
 ### Create Product
-POST https://event-driven-e-commerce.onrender.com/api/v1/products
+POST {{baseUrl}}/api/v1/products
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
@@ -27,20 +36,20 @@ Authorization: Bearer {{adminToken}}
 }
 
 ### List Products
-GET https://event-driven-e-commerce.onrender.com/api/v1/products
+GET {{baseUrl}}/api/v1/products
 
 ### Search Products by name
-GET https://event-driven-e-commerce.onrender.com/api/v1/products?q=headphones
+GET {{baseUrl}}/api/v1/products?q=headphones
 
 ### Filter Products by category
-GET https://event-driven-e-commerce.onrender.com/api/v1/products?categoryId=9129a5e4-99be-4720-b886-4bb0f01813cc
+GET {{baseUrl}}/api/v1/products?categoryId=9129a5e4-99be-4720-b886-4bb0f01813cc
 
 ###  ─────────────────────────────────────────────
 ###  INVENTORY (Admin only)
 ###  ─────────────────────────────────────────────
 
 ### Add Inventory
-POST https://event-driven-e-commerce.onrender.com/api/v1/inventory
+POST {{baseUrl}}/api/v1/inventory
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
@@ -51,10 +60,10 @@ Authorization: Bearer {{adminToken}}
 }
 
 ### Check Stock
-GET https://event-driven-e-commerce.onrender.com/api/v1/inventory/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
+GET {{baseUrl}}/api/v1/inventory/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
 
 ### Adjust Stock (set absolute quantity — Admin only)
-PUT https://event-driven-e-commerce.onrender.com/api/v1/inventory/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
+PUT {{baseUrl}}/api/v1/inventory/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
@@ -67,10 +76,10 @@ Authorization: Bearer {{adminToken}}
 ###  ─────────────────────────────────────────────
 
 ### List all categories
-GET https://event-driven-e-commerce.onrender.com/api/v1/categories
+GET {{baseUrl}}/api/v1/categories
 
 ### Create a category (Admin only)
-POST https://event-driven-e-commerce.onrender.com/api/v1/categories
+POST {{baseUrl}}/api/v1/categories
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
@@ -80,52 +89,53 @@ Authorization: Bearer {{adminToken}}
 }
 
 ###  ─────────────────────────────────────────────
-###  USER ACCOUNT — Register + Login as Chandana
+###  USER ACCOUNT — Register + Login as a test user
 ###  ─────────────────────────────────────────────
 
-### Step 1: Register Chandana's account (run once only)
-POST https://event-driven-e-commerce.onrender.com/api/v1/auth/register
+### Step 1: Register a test user (run once only)
+POST {{baseUrl}}/api/v1/auth/register
 Content-Type: application/json
 
 {
-  "name": "Chandana",
-  "email": "chandanaganasala11@gmail.com",
-  "password": "test1234"
+  "name": "Test User",
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
 }
 
-### Step 2: Login as Chandana — copy token from response into @userToken below
-POST https://event-driven-e-commerce.onrender.com/api/v1/auth/login
+### Step 2: Login as the test user — the token is captured into @userToken below
+# @name userLogin
+POST {{baseUrl}}/api/v1/auth/login
 Content-Type: application/json
 
 {
-  "email": "chandanacherry869@gmail.com",
-  "password": "test1234"
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
 }
 
-@userToken = eyJhbGciOiJIUzM4NCJ9.eyJyb2xlIjoiVVNFUiIsInVzZXJJZCI6ImViNGQ4M2RlLTlhYjctNGQ3OS1hNDMyLTc1YTdkN2ExNGJiOCIsImVtYWlsIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwibmFtZSI6IkNoYW5kYW5hIiwic3ViIjoiY2hhbmRhbmFjaGVycnk4NjlAZ21haWwuY29tIiwiaWF0IjoxNzgxODE1Njk0LCJleHAiOjE3ODE5MDIwOTR9.wXjqKkXoe17Z7IeagxejoZD31mRlAla4VcTE9YXRyGIct8YidR2WBpl13juuYbg8
+@userToken = {{userLogin.response.body.token}}
 
 ###  ─────────────────────────────────────────────
 ###  USER PROFILE
 ###  ─────────────────────────────────────────────
 
-### Get my profile (as Chandana)
-GET https://event-driven-e-commerce.onrender.com/api/v1/users/me
+### Get my profile (as test user)
+GET {{baseUrl}}/api/v1/users/me
 Authorization: Bearer {{userToken}}
 
 ### Get my profile (as Admin)
-GET https://event-driven-e-commerce.onrender.com/api/v1/users/me
+GET {{baseUrl}}/api/v1/users/me
 Authorization: Bearer {{adminToken}}
 
-### Get any user by ID (Admin only — paste Chandana's userId from login response)
-GET https://event-driven-e-commerce.onrender.com/api/v1/users/eb4d83de-9ab7-4d79-a432-75a7d7a14bb8
+### Get any user by ID (Admin only — paste the test user's id from login response)
+GET {{baseUrl}}/api/v1/users/eb4d83de-9ab7-4d79-a432-75a7d7a14bb8
 Authorization: Bearer {{adminToken}}
 
 ###  ─────────────────────────────────────────────
-###  ORDERS — Place as Chandana (triggers email)
+###  ORDERS — Place as test user (triggers email)
 ###  ─────────────────────────────────────────────
 
-### Step 3: Place Order — confirmation email sent to chandanacherry869@gmail.com
-POST https://event-driven-e-commerce.onrender.com/api/v1/orders
+### Step 3: Place Order — confirmation email sent to {{userEmail}}
+POST {{baseUrl}}/api/v1/orders
 Content-Type: application/json
 Authorization: Bearer {{userToken}}
 
@@ -133,23 +143,21 @@ Authorization: Bearer {{userToken}}
   "items": [
     {
       "productId": "ee04ec8d-a1a3-4941-9f78-6dd19dfdc381",
-      "productName": "Wireless Headphones",
-      "quantity": 1,
-      "unitPrice": 99.99
+      "quantity": 1
     }
   ]
 }
 
 ### Cancel Order (PENDING only — paste order ID from Place Order response)
-POST https://event-driven-e-commerce.onrender.com/api/v1/orders/d8fb8434-26d4-4a6f-bd22-edb93afeec40/cancel
+POST {{baseUrl}}/api/v1/orders/d8fb8434-26d4-4a6f-bd22-edb93afeec40/cancel
 Authorization: Bearer {{userToken}}
 
-### Get My Orders (as Chandana)
-GET https://event-driven-e-commerce.onrender.com/api/v1/orders
+### Get My Orders (as test user)
+GET {{baseUrl}}/api/v1/orders
 Authorization: Bearer {{userToken}}
 
-### Get Order by ID (as Chandana)
-GET https://event-driven-e-commerce.onrender.com/api/v1/orders/PASTE_ORDER_ID_HERE
+### Get Order by ID (as test user)
+GET {{baseUrl}}/api/v1/orders/PASTE_ORDER_ID_HERE
 Authorization: Bearer {{userToken}}
 
 ###  ─────────────────────────────────────────────
@@ -157,27 +165,27 @@ Authorization: Bearer {{userToken}}
 ###  ─────────────────────────────────────────────
 
 ### Get ALL orders from all users (paginated)
-GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders
+GET {{baseUrl}}/api/v1/admin/orders
 Authorization: Bearer {{adminToken}}
 
 ### Get all CONFIRMED orders
-GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders?status=CONFIRMED
+GET {{baseUrl}}/api/v1/admin/orders?status=CONFIRMED
 Authorization: Bearer {{adminToken}}
 
 ### Get all PENDING orders
-GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders?status=PENDING
+GET {{baseUrl}}/api/v1/admin/orders?status=PENDING
 Authorization: Bearer {{adminToken}}
 
 ### Get all CANCELLED orders
-GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders?status=CANCELLED
+GET {{baseUrl}}/api/v1/admin/orders?status=CANCELLED
 Authorization: Bearer {{adminToken}}
 
 ### Get any order by ID (admin can see any user's order)
-GET https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/PASTE_ORDER_ID_HERE
+GET {{baseUrl}}/api/v1/admin/orders/PASTE_ORDER_ID_HERE
 Authorization: Bearer {{adminToken}}
 
 ### Update order status (admin — paste order ID, set status to CONFIRMED or CANCELLED)
-PATCH https://event-driven-e-commerce.onrender.com/api/v1/admin/orders/297b5618-62b5-40a1-affc-bbad51575aff/status
+PATCH {{baseUrl}}/api/v1/admin/orders/297b5618-62b5-40a1-affc-bbad51575aff/status
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
@@ -190,11 +198,11 @@ Authorization: Bearer {{adminToken}}
 ###  ─────────────────────────────────────────────
 
 ### Get ALL users (paginated)
-GET https://event-driven-e-commerce.onrender.com/api/v1/admin/users
+GET {{baseUrl}}/api/v1/admin/users
 Authorization: Bearer {{adminToken}}
 
 ### Get user by ID (admin)
-GET https://event-driven-e-commerce.onrender.com/api/v1/admin/users/eb4d83de-9ab7-4d79-a432-75a7d7a14bb8
+GET {{baseUrl}}/api/v1/admin/users/eb4d83de-9ab7-4d79-a432-75a7d7a14bb8
 Authorization: Bearer {{adminToken}}
 
 ###  ─────────────────────────────────────────────
@@ -202,12 +210,12 @@ Authorization: Bearer {{adminToken}}
 ###  ─────────────────────────────────────────────
 
 ### Get Admin's own orders
-GET https://event-driven-e-commerce.onrender.com/api/v1/orders
+GET {{baseUrl}}/api/v1/orders
 Authorization: Bearer {{adminToken}}
 
 
 ### Assign category to Wireless Headphones
-PUT https://event-driven-e-commerce.onrender.com/api/v1/products/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
+PUT {{baseUrl}}/api/v1/products/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
 Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
@@ -220,4 +228,4 @@ Authorization: Bearer {{adminToken}}
 }
 
 ### Get Wireless Headphones by ID
-GET https://event-driven-e-commerce.onrender.com/api/v1/products/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381
+GET {{baseUrl}}/api/v1/products/ee04ec8d-a1a3-4941-9f78-6dd19dfdc381

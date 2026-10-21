@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -64,9 +65,9 @@ class AuthServiceTest {
         req.setEmail("alice@example.com");
         req.setPassword("password123");
 
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("hashed");
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(userRepository.saveAndFlush(any(User.class))).thenReturn(savedUser);
         UserDetails ud = org.springframework.security.core.userdetails.User
                 .withUsername("alice@example.com").password("hashed").roles("USER").build();
         when(userDetailsService.loadUserByUsername("alice@example.com")).thenReturn(ud);
@@ -76,7 +77,7 @@ class AuthServiceTest {
 
         assertThat(response.getToken()).isEqualTo("jwt-token");
         assertThat(response.getUser().getEmail()).isEqualTo("alice@example.com");
-        verify(userRepository).save(any(User.class));
+        verify(userRepository).saveAndFlush(any(User.class));
     }
 
     @Test
@@ -86,13 +87,43 @@ class AuthServiceTest {
         req.setEmail("alice@example.com");
         req.setPassword("password123");
 
-        when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(req))
                 .isInstanceOf(EmailAlreadyExistsException.class)
                 .hasMessageContaining("alice@example.com");
 
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void register_normalisesEmailCase() {
+        RegisterRequest req = new RegisterRequest();
+        req.setName("Alice");
+        req.setEmail("  Alice@Example.COM ");
+        req.setPassword("password123");
+
+        when(userRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.register(req))
+                .isInstanceOf(EmailAlreadyExistsException.class)
+                .hasMessageContaining("alice@example.com");
+    }
+
+    @Test
+    void register_concurrentDuplicate_mapsToEmailAlreadyExists() {
+        RegisterRequest req = new RegisterRequest();
+        req.setName("Alice");
+        req.setEmail("alice@example.com");
+        req.setPassword("password123");
+
+        when(userRepository.existsByEmailIgnoreCase("alice@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("password123")).thenReturn("hashed");
+        when(userRepository.saveAndFlush(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+        assertThatThrownBy(() -> authService.register(req))
+                .isInstanceOf(EmailAlreadyExistsException.class);
     }
 
     @Test
@@ -101,7 +132,7 @@ class AuthServiceTest {
         req.setEmail("alice@example.com");
         req.setPassword("password123");
 
-        when(userRepository.findByEmail("alice@example.com")).thenReturn(Optional.of(savedUser));
+        when(userRepository.findByEmailIgnoreCase("alice@example.com")).thenReturn(Optional.of(savedUser));
         UserDetails ud = org.springframework.security.core.userdetails.User
                 .withUsername("alice@example.com").password("hashed").roles("USER").build();
         when(userDetailsService.loadUserByUsername("alice@example.com")).thenReturn(ud);
@@ -126,6 +157,6 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.login(req))
                 .isInstanceOf(BadCredentialsException.class);
 
-        verify(userRepository, never()).findByEmail(anyString());
+        verify(userRepository, never()).findByEmailIgnoreCase(anyString());
     }
 }

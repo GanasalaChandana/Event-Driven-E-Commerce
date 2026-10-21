@@ -55,7 +55,7 @@ spring:
         spring.json.trusted.packages: "com.shopflow.*"
 
 jwt:
-  secret: ${JWT_SECRET:shopflow-super-secret-key-change-in-production-min-256-bits}
+  secret: ${JWT_SECRET}
   expiration-ms: 604800000
 
 kafka:
@@ -84,3 +84,8 @@ management:
     web:
       exposure:
         include: health, info
+
+# Admin account bootstrap — no default password; skipped when ADMIN_PASSWORD is unset
+admin:
+  email: ${ADMIN_EMAIL:admin@shopflow.com}
+  password: ${ADMIN_PASSWORD:}

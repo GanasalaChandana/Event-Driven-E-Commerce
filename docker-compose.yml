@@ -85,7 +85,8 @@ services:
       SPRING_DATASOURCE_USERNAME: shopflow
       SPRING_DATASOURCE_PASSWORD: shopflow123
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      JWT_SECRET: ${JWT_SECRET:-shopflow-super-secret-key-change-in-production-min-256-bits}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET (32+ random bytes) in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       EUREKA_URL: http://eureka-server:8761/eureka/
     depends_on:
       postgres:
@@ -189,7 +190,7 @@ services:
         SERVICE_NAME: api-gateway
     environment:
       PORT: 8080
-      JWT_SECRET: ${JWT_SECRET:-shopflow-super-secret-key-change-in-production-min-256-bits}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET (32+ random bytes) in .env}
       EUREKA_URL: http://eureka-server:8761/eureka/
     ports:
       - "8080:8080"

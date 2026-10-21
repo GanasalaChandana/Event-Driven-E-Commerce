@@ -17,7 +17,7 @@ public class UserService {
     private final UserRepository userRepository;
 
     public UserResponse getByEmail(String email) {
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailIgnoreCase(email)
                 .map(UserResponse::from)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }

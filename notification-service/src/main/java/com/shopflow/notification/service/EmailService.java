@@ -27,9 +27,9 @@ public class EmailService {
                 + "<p>Your order has been confirmed and is being prepared.</p>"
                 + "<table style='width:100%;border-collapse:collapse'>"
                 + "<tr><td style='padding:8px;font-weight:bold'>Order ID</td>"
-                + "<td style='padding:8px'>" + orderId + "</td></tr>"
+                + "<td style='padding:8px'>" + escape(orderId) + "</td></tr>"
                 + "<tr style='background:#f9fafb'><td style='padding:8px;font-weight:bold'>Total</td>"
-                + "<td style='padding:8px'>$" + totalAmount + "</td></tr>"
+                + "<td style='padding:8px'>$" + escape(totalAmount) + "</td></tr>"
                 + "</table>"
                 + "<p style='margin-top:24px;color:#6b7280'>Thank you for shopping with ShopFlow.</p>"
                 + "</div>";
@@ -44,9 +44,9 @@ public class EmailService {
                 + "<p>Unfortunately your order could not be processed.</p>"
                 + "<table style='width:100%;border-collapse:collapse'>"
                 + "<tr><td style='padding:8px;font-weight:bold'>Order ID</td>"
-                + "<td style='padding:8px'>" + orderId + "</td></tr>"
+                + "<td style='padding:8px'>" + escape(orderId) + "</td></tr>"
                 + "<tr style='background:#f9fafb'><td style='padding:8px;font-weight:bold'>Reason</td>"
-                + "<td style='padding:8px'>" + reason + "</td></tr>"
+                + "<td style='padding:8px'>" + escape(reason) + "</td></tr>"
                 + "</table>"
                 + "<p style='margin-top:24px;color:#6b7280'>No payment has been taken.</p>"
                 + "</div>";
@@ -57,13 +57,30 @@ public class EmailService {
     public void sendWelcome(String to, String name) {
         String subject = "Welcome to ShopFlow!";
         String body = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto'>"
-                + "<h2 style='color:#2563eb'>Welcome, " + name + "!</h2>"
+                + "<h2 style='color:#2563eb'>Welcome, " + escape(name) + "!</h2>"
                 + "<p>Your account has been created successfully.</p>"
                 + "<p>You can now browse products, place orders, and track deliveries.</p>"
                 + "<p style='margin-top:32px;color:#6b7280;font-size:12px'>"
                 + "If you did not create this account, please ignore this email.</p>"
                 + "</div>";
         send(to, subject, body);
+    }
+
+    // User-controlled values (names, reasons) must never be injected into HTML unescaped
+    static String escape(String value) {
+        if (value == null) return "";
+        StringBuilder out = new StringBuilder(value.length());
+        for (char c : value.toCharArray()) {
+            switch (c) {
+                case '&' -> out.append("&amp;");
+                case '<' -> out.append("&lt;");
+                case '>' -> out.append("&gt;");
+                case '"' -> out.append("&quot;");
+                case '\'' -> out.append("&#39;");
+                default -> out.append(c);
+            }
+        }
+        return out.toString();
     }
 
     private void send(String to, String subject, String htmlBody) {

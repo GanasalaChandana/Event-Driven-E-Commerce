@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,6 +31,7 @@ class AuthServiceTest {
     @Mock AuthenticationManager authenticationManager;
     @Mock UserDetailsServiceImpl userDetailsService;
     @Mock KafkaTemplate<String, UserRegisteredEvent> kafkaTemplate;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks AuthService authService;
 
@@ -40,12 +42,12 @@ class AuthServiceTest {
         req.setEmail("test@example.com");
         req.setPassword("password123");
 
-        when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(req))
                 .isInstanceOf(EmailAlreadyExistsException.class)
                 .hasMessageContaining("test@example.com");
 
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 }
