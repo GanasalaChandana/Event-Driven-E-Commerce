@@ -18,7 +18,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && typeof window !== "undefined") {
+    // A 401 from login/register just means wrong credentials — let the form show its own error
+    const isAuthCall = String(err.config?.url ?? "").includes("/api/v1/auth/");
+    if (err.response?.status === 401 && !isAuthCall && typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";

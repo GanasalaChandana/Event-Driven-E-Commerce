@@ -48,7 +48,8 @@ export const adjustStock = (productId: string, quantity: number) =>
 export const getMyOrders = (page = 0) =>
   api.get<Page<Order>>("/api/v1/orders", { params: { page, size: 10 } }).then((r) => r.data);
 
-export const placeOrder = (items: object[]) =>
+// Prices and names are looked up by the server — only product IDs and quantities are sent
+export const placeOrder = (items: { productId: string; quantity: number }[]) =>
   api.post<Order>("/api/v1/orders", { items }).then((r) => r.data);
 
 export const cancelOrder = (id: string) =>

@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Tag, Trash2 } from "lucide-react";
+import { apiErrorMessage } from "@/lib/utils";
 
 export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
@@ -42,8 +43,8 @@ export default function AdminCategoriesPage() {
       setName("");
       setDescription("");
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.detail || "Category already exists");
+    onError: (err: unknown) => {
+      toast.error(apiErrorMessage(err, "Category already exists"));
     },
   });
 

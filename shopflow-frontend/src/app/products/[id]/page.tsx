@@ -16,6 +16,7 @@ import {
   ShoppingCart, Package, ArrowLeft, CheckCircle,
   AlertCircle, Tag, Loader2
 } from "lucide-react";
+import { apiErrorMessage } from "@/lib/utils";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,22 +36,17 @@ export default function ProductDetailPage() {
     enabled: !!id,
   });
 
-  const { mutate: order, isPending, isSuccess, data: placedOrder } = useMutation({
+  const { mutate: order, isPending } = useMutation({
     mutationFn: () =>
-      placeOrder([{
-        productId: id,
-        productName: product!.name,
-        quantity: qty,
-        unitPrice: product!.price,
-      }]),
+      placeOrder([{ productId: id, quantity: qty }]),
     onSuccess: (data) => {
       toast.success("Order placed successfully!");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["inventory", id] });
       router.push(`/orders/confirmation?orderId=${data.id}&total=${data.totalAmount}`);
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.detail || "Failed to place order");
+    onError: (err: unknown) => {
+      toast.error(apiErrorMessage(err, "Failed to place order"));
     },
   });
 

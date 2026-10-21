@@ -1,14 +1,17 @@
 import requests
 import asyncio
 import os
+import sys
 import time
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-SHOPFLOW_API = "https://event-driven-e-commerce.onrender.com/api/v1"
+SHOPFLOW_API = os.environ.get("SHOPFLOW_API_URL", "https://event-driven-e-commerce.onrender.com") .rstrip("/") + "/api/v1"
 ADMIN_EMAIL = os.environ.get("SHOPFLOW_ADMIN_EMAIL", "admin@shopflow.com")
-ADMIN_PASSWORD = os.environ["SHOPFLOW_ADMIN_PASSWORD"]
+ADMIN_PASSWORD = os.environ.get("SHOPFLOW_ADMIN_PASSWORD")
+if not ADMIN_PASSWORD:
+    sys.exit("SHOPFLOW_ADMIN_PASSWORD is not set — add it to the MCP server's env config")
 
 _token: str | None = None
 _token_expiry: float = 0
@@ -25,12 +28,26 @@ def get_token() -> str:
     r.raise_for_status()
     data = r.json()
     _token = data["token"]
-    _token_expiry = time.time() + 6 * 24 * 3600  # refresh after 6 days
+    _token_expiry = time.time() + 12 * 3600  # tokens last 24h on the microservices, 7d on the monolith; refresh well before either
     return _token
 
 
 def headers() -> dict:
     return {"Authorization": f"Bearer {get_token()}"}
+
+
+def fetch_all(path: str, params: dict | None = None, page_size: int = 100, max_pages: int = 200) -> list:
+    """Walk every page of a Spring Page<T> endpoint and return the combined content."""
+    items: list = []
+    for page in range(max_pages):
+        r = requests.get(f"{SHOPFLOW_API}{path}", headers=headers(),
+                         params={**(params or {}), "page": page, "size": page_size}, timeout=90)
+        r.raise_for_status()
+        body = r.json()
+        items.extend(body.get("content", []))
+        if body.get("last", True) or not body.get("content"):
+            break
+    return items
 
 
 server = Server("shopflow-mcp")
@@ -137,11 +154,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
     if name == "get_low_stock_products":
         threshold = arguments.get("threshold", 10)
-        r = requests.get(f"{SHOPFLOW_API}/inventory", headers=h, timeout=90)
-        if r.status_code != 200:
-            return [TextContent(type="text", text=r.text)]
-        items = r.json() if isinstance(r.json(), list) else r.json().get("content", [])
-        low = [i for i in items if i.get("availableQuantity", 999) < threshold]
+        try:
+            items = fetch_all("/inventory")
+        except requests.HTTPError as e:
+            return [TextContent(type="text", text=f"Could not load inventory: {e}")]
+        low = [i for i in items if i.get("availableQuantity", 0) < threshold]
+        low.sort(key=lambda i: i.get("availableQuantity", 0))
         return [TextContent(type="text", text=str(low))]
 
     if name == "update_inventory":
@@ -163,31 +181,38 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=r.text)]
 
     if name == "search_orders_by_email":
-        r = requests.get(f"{SHOPFLOW_API}/admin/orders?size=100", headers=h, timeout=90)
-        if r.status_code != 200:
-            return [TextContent(type="text", text=r.text)]
-        orders = r.json().get("content", [])
-        email = arguments["email"].lower()
+        email = arguments["email"].strip().lower()
+        try:
+            orders = fetch_all("/admin/orders")
+        except requests.HTTPError as e:
+            return [TextContent(type="text", text=f"Could not load orders: {e}")]
         matches = [o for o in orders if o.get("userEmail", "").lower() == email]
         return [TextContent(type="text", text=str(matches))]
 
     if name == "get_dashboard_stats":
-        orders = requests.get(f"{SHOPFLOW_API}/admin/orders?size=100", headers=h, timeout=90).json()
-        users = requests.get(f"{SHOPFLOW_API}/admin/users?size=1", headers=h, timeout=90).json()
-        all_orders = orders.get("content", [])
-        revenue = sum(o.get("totalAmount", 0) for o in all_orders if o.get("status") != "CANCELLED")
-        confirmed = sum(1 for o in all_orders if o.get("status") == "CONFIRMED")
-        pending = sum(1 for o in all_orders if o.get("status") == "PENDING")
-        cancelled = sum(1 for o in all_orders if o.get("status") == "CANCELLED")
+        try:
+            orders = fetch_all("/admin/orders")
+            users = requests.get(f"{SHOPFLOW_API}/admin/users", headers=h, params={"size": 1}, timeout=90)
+            users.raise_for_status()
+        except requests.HTTPError as e:
+            return [TextContent(type="text", text=f"Could not load stats: {e}")]
+        counts = {"CONFIRMED": 0, "PENDING": 0, "CANCELLED": 0}
+        revenue = 0.0
+        for o in orders:
+            counts[o.get("status")] = counts.get(o.get("status"), 0) + 1
+            if o.get("status") != "CANCELLED":
+                revenue += float(o.get("totalAmount") or 0)
         stats = {
-            "total_orders": orders.get("totalElements"),
-            "confirmed": confirmed,
-            "pending": pending,
-            "cancelled": cancelled,
+            "total_orders": len(orders),
+            "confirmed": counts["CONFIRMED"],
+            "pending": counts["PENDING"],
+            "cancelled": counts["CANCELLED"],
             "total_revenue": f"${revenue:.2f}",
-            "total_users": users.get("totalElements")
+            "total_users": users.json().get("totalElements"),
         }
         return [TextContent(type="text", text=str(stats))]
+
+    return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
 
 async def main():

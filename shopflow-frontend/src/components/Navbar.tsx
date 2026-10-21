@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, LayoutDashboard, LogOut, User, Menu, X, ShoppingCart, Package, Sun, Moon } from "lucide-react";
@@ -11,12 +11,10 @@ import { useTheme } from "next-themes";
 export default function Navbar() {
   const { user, isAdmin, logout } = useAuthStore();
   const router = useRouter();
-  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // false during SSR/hydration, true once on the client (next-themes only knows the theme then)
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   const { theme, setTheme } = useTheme();
-
-  useEffect(() => { setMounted(true); }, []);
 
   const handleLogout = () => {
     logout();

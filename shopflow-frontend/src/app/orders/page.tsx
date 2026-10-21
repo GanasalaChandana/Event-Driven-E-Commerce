@@ -16,6 +16,7 @@ import { Package, X, Loader2, ShoppingBag } from "lucide-react";
 import { Order } from "@/lib/types";
 import { useEffect } from "react";
 import Link from "next/link";
+import { apiErrorMessage } from "@/lib/utils";
 
 const statusColor: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
@@ -47,8 +48,8 @@ export default function OrdersPage() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       setCancellingId(null);
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.detail || "Cannot cancel this order");
+    onError: (err: unknown) => {
+      toast.error(apiErrorMessage(err, "Cannot cancel this order"));
       setCancellingId(null);
     },
   });

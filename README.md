@@ -55,7 +55,8 @@ Add to Claude Desktop config (`%APPDATA%\Claude\claude_desktop_config.json`):
       "command": "/path/to/shopflow-mcp/venv/Scripts/python.exe",
       "args": ["/path/to/shopflow-mcp/server.py"],
       "env": {
-        "SHOPFLOW_ADMIN_TOKEN": "your-admin-jwt-token"
+        "SHOPFLOW_ADMIN_EMAIL": "admin@shopflow.com",
+        "SHOPFLOW_ADMIN_PASSWORD": "your-admin-password"
       }
     }
   }
@@ -188,7 +189,7 @@ Content-Type: application/json
 ```
 **Response — 200 OK** — same shape as register response.
 
-> **Default admin:** `admin@shopflow.com` / `admin123`
+> **Admin account:** created at startup from the `ADMIN_EMAIL` (default `admin@shopflow.com`) and `ADMIN_PASSWORD` environment variables. There is no default password — if `ADMIN_PASSWORD` is unset (or under 12 characters) no admin is created or changed.
 
 ---
 
@@ -368,13 +369,12 @@ Authorization: Bearer <token>
   "items": [
     {
       "productId": "ee04ec8d-...",
-      "productName": "Wireless Headphones",
-      "quantity": 1,
-      "unitPrice": 99.99
+      "quantity": 1
     }
   ]
 }
 ```
+Names and prices are always taken from the product catalogue on the server; `productName` / `unitPrice` in the request are ignored. Repeated lines for the same product are merged, and unknown or deleted products return `400`.
 **Response — 201 Created**
 ```json
 {
@@ -522,12 +522,15 @@ All errors follow [RFC 9457 Problem Details](https://datatracker.ietf.org/doc/ht
 ```bash
 docker compose up -d
 ```
-Starts PostgreSQL, Kafka, Zookeeper, and Kafka UI (http://localhost:8090).
+Starts the full microservices stack: PostgreSQL, Redis, Kafka (KRaft, no Zookeeper), Eureka, the API gateway on `http://localhost:8080`, and the user / product / order / inventory / notification services. `JWT_SECRET` is required (see below); set it in a `.env` file next to `docker-compose.yml`.
+
+To run only the infrastructure for the monolith: `docker compose up -d postgres redis kafka`.
 
 ### 2. Set environment variables
 ```bash
-export RESEND_API_KEY=re_your_key_here
-export JWT_SECRET=your-256-bit-secret
+export JWT_SECRET="$(openssl rand -base64 48)"   # required, 32+ bytes
+export ADMIN_PASSWORD="choose-a-strong-password"  # required to create the admin account, 12+ chars
+export RESEND_API_KEY=re_your_key_here            # optional — emails are skipped without it
 ```
 
 ### 3. Run the monolith
@@ -544,9 +547,13 @@ API available at `http://localhost:10000`
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/shopflow_db` | PostgreSQL URL |
 | `SPRING_DATASOURCE_USERNAME` | `shopflow` | DB username |
 | `SPRING_DATASOURCE_PASSWORD` | `shopflow123` | DB password |
-| `JWT_SECRET` | dev default | Min 256-bit in production |
+| `JWT_SECRET` | — (required) | 32+ bytes; the app refuses to start without it |
+| `ADMIN_EMAIL` | `admin@shopflow.com` | Admin account email |
+| `ADMIN_PASSWORD` | — | Admin password (12+ chars). Admin is not created/updated when unset |
+| `KAFKA_LISTENERS_ENABLED` | `false` | Monolith only: run the Kafka saga listeners (the in-process fulfilment is the default) |
+| `RATE_LIMIT_CLIENT_IP_HEADER` | `CF-Connecting-IP` | Trusted header with the real client IP for rate limiting |
 | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker (optional) |
-| `RESEND_API_KEY` | — | Resend API key for emails |
+| `RESEND_API_KEY` | — | Resend API key for emails (optional) |
 
 ---
 

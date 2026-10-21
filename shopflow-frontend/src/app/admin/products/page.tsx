@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Product } from "@/lib/types";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { apiErrorMessage } from "@/lib/utils";
 
 const emptyForm = { name: "", description: "", price: "", sku: "", categoryId: "" };
 
@@ -52,7 +53,7 @@ export default function AdminProductsPage() {
       setForm(emptyForm);
       setEditing(null);
     },
-    onError: (err: any) => toast.error(err?.response?.data?.detail || "Failed to save product"),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, "Failed to save product")),
   });
 
   const { mutate: remove } = useMutation({

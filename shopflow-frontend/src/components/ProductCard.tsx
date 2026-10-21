@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Package, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiErrorMessage } from "@/lib/utils";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { user } = useAuthStore();
@@ -26,19 +27,14 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const { mutate: order, isPending } = useMutation({
     mutationFn: () =>
-      placeOrder([{
-        productId: product.id,
-        productName: product.name,
-        quantity: qty,
-        unitPrice: product.price,
-      }]),
+      placeOrder([{ productId: product.id, quantity: qty }]),
     onSuccess: () => {
       toast.success("Order placed! Check your email for confirmation.");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["inventory", product.id] });
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.detail || "Failed to place order");
+    onError: (err: unknown) => {
+      toast.error(apiErrorMessage(err, "Failed to place order"));
     },
   });
 

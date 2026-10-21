@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingBag, Loader2 } from "lucide-react";
+import { apiErrorMessage } from "@/lib/utils";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,9 +28,8 @@ export default function RegisterPage() {
       toast.success(`Welcome to ShopFlow, ${data.name}!`);
       router.push("/products");
     },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.detail || "Registration failed";
-      toast.error(msg);
+    onError: (err: unknown) => {
+      toast.error(apiErrorMessage(err, "Registration failed"));
     },
   });
 

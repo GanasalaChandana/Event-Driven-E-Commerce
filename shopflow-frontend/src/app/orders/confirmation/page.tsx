@@ -26,7 +26,7 @@ function ConfirmationContent() {
 
           <h1 className="text-3xl font-bold text-slate-900 mb-3">Order Placed!</h1>
           <p className="text-slate-500 mb-8">
-            Your order has been received and is being processed. You'll receive a confirmation email shortly.
+            Your order has been received and is being processed. You&apos;ll receive a confirmation email shortly.
           </p>
 
           {/* Order details box */}
