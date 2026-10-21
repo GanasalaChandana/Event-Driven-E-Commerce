@@ -6,6 +6,7 @@ import com.shopflow.order.dto.OrderRequest;
 import com.shopflow.order.dto.OrderResponse;
 import com.shopflow.order.entity.Order;
 import com.shopflow.order.entity.OrderStatus;
+import com.shopflow.order.event.OrderStatusChangedApplicationEvent;
 import com.shopflow.order.exception.InvalidOrderStatusTransitionException;
 import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
@@ -19,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
@@ -203,8 +205,9 @@ class OrderServiceTest {
 
         assertThat(o.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         verify(eventProducer).publishInventoryRelease(any());
-        ArgumentCaptor<Object> published = ArgumentCaptor.forClass(Object.class);
+        ArgumentCaptor<ApplicationEvent> published = ArgumentCaptor.forClass(ApplicationEvent.class);
         verify(eventPublisher).publishEvent(published.capture());
+        assertThat(published.getValue()).isInstanceOf(OrderStatusChangedApplicationEvent.class);
     }
 
     @Test
