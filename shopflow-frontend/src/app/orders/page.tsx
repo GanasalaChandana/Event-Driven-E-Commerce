@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getMyOrders, cancelOrder } from "@/lib/queries";
+import { getMyOrders, cancelOrder, checkoutOrder } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Package, X, Loader2, ShoppingBag } from "lucide-react";
+import { Package, X, Loader2, ShoppingBag, CreditCard } from "lucide-react";
 import { Order } from "@/lib/types";
 import { useEffect } from "react";
 import Link from "next/link";
-import { apiErrorMessage } from "@/lib/utils";
+import { apiErrorMessage, redirectTo } from "@/lib/utils";
 
 const statusColor: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
@@ -30,10 +30,19 @@ export default function OrdersPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) router.push("/login");
   }, [user, router]);
+
+  // Stripe sends the customer back here with ?payment=cancelled if they close the payment page
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("payment") === "cancelled") {
+      toast.info("Payment cancelled. Your order is held for a short time — pay now or cancel it below.");
+      router.replace("/orders");
+    }
+  }, [router]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["orders", page],
@@ -51,6 +60,23 @@ export default function OrdersPage() {
     onError: (err: unknown) => {
       toast.error(apiErrorMessage(err, "Cannot cancel this order"));
       setCancellingId(null);
+    },
+  });
+
+  const { mutate: pay } = useMutation({
+    mutationFn: (id: string) => checkoutOrder(id),
+    onSuccess: ({ url }) => {
+      if (url) {
+        redirectTo(url);
+        return;
+      }
+      toast.info("This order does not need payment.");
+      setPayingId(null);
+    },
+    onError: (err: unknown) => {
+      toast.error(apiErrorMessage(err, "Could not start payment"));
+      setPayingId(null);
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 
@@ -97,6 +123,22 @@ export default function OrdersPage() {
                       <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusColor[order.status]}`}>
                         {order.status}
                       </span>
+                      {order.status === "PENDING" && (
+                        <Button
+                          size="sm"
+                          disabled={payingId === order.id}
+                          onClick={() => {
+                            setPayingId(order.id);
+                            pay(order.id);
+                          }}
+                        >
+                          {payingId === order.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <><CreditCard className="h-4 w-4 mr-1" />Pay now</>
+                          )}
+                        </Button>
+                      )}
                       {order.status === "PENDING" && (
                         <Button
                           variant="ghost"

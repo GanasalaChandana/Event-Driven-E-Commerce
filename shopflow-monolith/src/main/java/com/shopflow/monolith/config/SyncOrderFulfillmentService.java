@@ -6,6 +6,7 @@ import com.shopflow.order.event.OrderCancelledApplicationEvent;
 import com.shopflow.order.event.OrderPlacedApplicationEvent;
 import com.shopflow.order.event.OrderStatusChangedApplicationEvent;
 import com.shopflow.order.entity.OrderStatus;
+import com.shopflow.order.payment.PaymentProperties;
 import com.shopflow.order.service.OrderService;
 import com.shopflow.monolith.notification.EmailNotificationService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class SyncOrderFulfillmentService {
     private final InventoryService inventoryService;
     private final OrderService orderService;
     private final EmailNotificationService emailNotificationService;
+    private final PaymentProperties paymentProperties;
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -49,6 +51,14 @@ public class SyncOrderFulfillmentService {
 
         try {
             if (inventoryService.reserveStockSync(orderId, items)) {
+                if (paymentProperties.enabled()) {
+                    // Stock is held; the order is confirmed by the Stripe webhook once it is paid
+                    if ("CANCELLED".equals(orderService.getOrderById(orderId).getStatus())) {
+                        inventoryService.releaseReservation(orderId);
+                    }
+                    log.info("Order {} stock reserved — awaiting payment", orderId);
+                    return;
+                }
                 if (orderService.confirmOrder(orderId)) {
                     inventoryService.commitReservation(orderId);
                     log.info("Order {} CONFIRMED via sync fulfillment", orderId);

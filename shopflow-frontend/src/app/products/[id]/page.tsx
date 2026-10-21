@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
-import { getProduct, getInventory, placeOrder } from "@/lib/queries";
+import { getProduct, getInventory, placeOrderAndPay } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
   ShoppingCart, Package, ArrowLeft, CheckCircle,
   AlertCircle, Tag, Loader2
 } from "lucide-react";
-import { apiErrorMessage } from "@/lib/utils";
+import { apiErrorMessage, redirectTo } from "@/lib/utils";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,8 +38,13 @@ export default function ProductDetailPage() {
 
   const { mutate: order, isPending } = useMutation({
     mutationFn: () =>
-      placeOrder([{ productId: id, quantity: qty }]),
-    onSuccess: (data) => {
+      placeOrderAndPay([{ productId: id, quantity: qty }]),
+    onSuccess: ({ order: data, checkoutUrl }) => {
+      if (checkoutUrl) {
+        toast.success("Order created — redirecting to secure payment…");
+        redirectTo(checkoutUrl);
+        return;
+      }
       toast.success("Order placed successfully!");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["inventory", id] });

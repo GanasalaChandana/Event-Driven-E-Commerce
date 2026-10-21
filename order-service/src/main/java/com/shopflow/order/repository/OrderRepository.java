@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,4 +21,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     // Row lock for status transitions so concurrent confirm/cancel can't overwrite each other
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Order> findWithLockById(UUID id);
+
+    List<Order> findAllByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime cutoff);
 }

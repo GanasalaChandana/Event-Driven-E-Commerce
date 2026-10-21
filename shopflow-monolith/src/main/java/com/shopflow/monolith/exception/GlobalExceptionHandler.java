@@ -5,6 +5,7 @@ import com.shopflow.inventory.exception.InventoryNotFoundException;
 import com.shopflow.order.exception.InvalidOrderStatusTransitionException;
 import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
+import com.shopflow.order.exception.PaymentException;
 import com.shopflow.order.exception.ProductUnavailableException;
 import com.shopflow.product.exception.DuplicateSkuException;
 import com.shopflow.product.exception.ProductNotFoundException;
@@ -51,6 +52,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     ProblemDetail handleAuthentication(AuthenticationException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Authentication required");
+    }
+
+    @ExceptionHandler(PaymentException.class)
+    ProblemDetail handlePayment(PaymentException ex) {
+        return ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
     }
 
     @ExceptionHandler(AccessDeniedException.class)

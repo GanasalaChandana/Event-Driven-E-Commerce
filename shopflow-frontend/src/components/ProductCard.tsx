@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Product } from "@/lib/types";
-import { placeOrder, getInventory } from "@/lib/queries";
+import { placeOrderAndPay, getInventory } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Package, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiErrorMessage } from "@/lib/utils";
+import { apiErrorMessage, redirectTo } from "@/lib/utils";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { user } = useAuthStore();
@@ -27,8 +27,13 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const { mutate: order, isPending } = useMutation({
     mutationFn: () =>
-      placeOrder([{ productId: product.id, quantity: qty }]),
-    onSuccess: () => {
+      placeOrderAndPay([{ productId: product.id, quantity: qty }]),
+    onSuccess: ({ checkoutUrl }) => {
+      if (checkoutUrl) {
+        toast.success("Order created — redirecting to secure payment…");
+        redirectTo(checkoutUrl);
+        return;
+      }
       toast.success("Order placed! Check your email for confirmation.");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["inventory", product.id] });

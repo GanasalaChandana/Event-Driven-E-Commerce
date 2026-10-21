@@ -12,6 +12,7 @@ import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
 import com.shopflow.order.exception.ProductUnavailableException;
 import com.shopflow.order.messaging.OrderEventProducer;
+import com.shopflow.order.payment.PaymentProperties;
 import com.shopflow.order.repository.OrderRepository;
 import com.shopflow.order.service.OrderService;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class OrderServiceTest {
     @Mock OrderEventProducer eventProducer;
     @Mock ApplicationEventPublisher eventPublisher;
     @Mock ProductCatalog productCatalog;
+    @Mock PaymentProperties paymentProperties;
 
     @InjectMocks OrderService orderService;
 
@@ -155,6 +157,64 @@ class OrderServiceTest {
 
         verify(eventProducer).publishInventoryRelease(any());
         verify(eventProducer, never()).publishOrderConfirmed(any());
+    }
+
+    @Test
+    void handleInventoryReserved_withPaymentsEnabled_keepsOrderPendingUntilPaid() {
+        when(paymentProperties.enabled()).thenReturn(true);
+        when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(order(OrderStatus.PENDING)));
+
+        orderService.handleInventoryReserved(ORDER_ID);
+
+        verify(eventProducer, never()).publishOrderConfirmed(any());
+        verify(eventProducer, never()).publishInventoryRelease(any());
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void confirmPaidOrder_pending_confirmsAndNotifiesMonolith() {
+        when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(order(OrderStatus.PENDING)));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(orderService.confirmPaidOrder(ORDER_ID)).isTrue();
+
+        verify(eventProducer).publishOrderConfirmed(any());
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isInstanceOf(OrderStatusChangedApplicationEvent.class);
+        assertThat(((OrderStatusChangedApplicationEvent) captor.getValue()).getNewStatus())
+                .isEqualTo(OrderStatus.CONFIRMED);
+    }
+
+    @Test
+    void confirmPaidOrder_alreadyCancelled_returnsFalse() {
+        when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(order(OrderStatus.CANCELLED)));
+
+        assertThat(orderService.confirmPaidOrder(ORDER_ID)).isFalse();
+
+        verify(eventProducer, never()).publishOrderConfirmed(any());
+    }
+
+    @Test
+    void cancelUnpaidOrder_pending_cancelsAndReleasesStock() {
+        Order o = order(OrderStatus.PENDING);
+        when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(orderService.cancelUnpaidOrder(ORDER_ID)).isTrue();
+
+        assertThat(o.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        verify(eventProducer).publishOrderCancelled(any());
+        verify(eventProducer).publishInventoryRelease(any());
+    }
+
+    @Test
+    void cancelUnpaidOrder_alreadyPaid_isNoOp() {
+        when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(order(OrderStatus.CONFIRMED)));
+
+        assertThat(orderService.cancelUnpaidOrder(ORDER_ID)).isFalse();
+
+        verify(eventProducer, never()).publishInventoryRelease(any());
     }
 
     @Test

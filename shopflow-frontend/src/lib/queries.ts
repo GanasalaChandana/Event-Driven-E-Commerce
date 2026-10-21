@@ -52,6 +52,20 @@ export const getMyOrders = (page = 0) =>
 export const placeOrder = (items: { productId: string; quantity: number }[]) =>
   api.post<Order>("/api/v1/orders", { items }).then((r) => r.data);
 
+export const getOrder = (id: string) =>
+  api.get<Order>(`/api/v1/orders/${id}`).then((r) => r.data);
+
+/** Starts payment for a PENDING order. url is null when the server has payments disabled. */
+export const checkoutOrder = (id: string) =>
+  api.post<{ url: string | null }>(`/api/v1/orders/${id}/checkout`).then((r) => r.data);
+
+/** Places the order, then asks for a Stripe payment page. checkoutUrl is null when payments are off. */
+export const placeOrderAndPay = async (items: { productId: string; quantity: number }[]) => {
+  const order = await placeOrder(items);
+  const { url } = await checkoutOrder(order.id);
+  return { order, checkoutUrl: url };
+};
+
 export const cancelOrder = (id: string) =>
   api.post<Order>(`/api/v1/orders/${id}/cancel`).then((r) => r.data);
 

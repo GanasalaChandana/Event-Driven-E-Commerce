@@ -63,3 +63,11 @@ management:
     web:
       exposure:
         include: health, info
+
+# Stripe payments — optional. Without both keys, orders are confirmed automatically (no payment step).
+payments:
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  unpaid-timeout-minutes: ${UNPAID_ORDER_TIMEOUT_MINUTES:35}

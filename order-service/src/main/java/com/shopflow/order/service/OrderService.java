@@ -19,6 +19,7 @@ import com.shopflow.order.exception.OrderCancellationException;
 import com.shopflow.order.exception.OrderNotFoundException;
 import com.shopflow.order.exception.ProductUnavailableException;
 import com.shopflow.order.messaging.OrderEventProducer;
+import com.shopflow.order.payment.PaymentProperties;
 import com.shopflow.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ public class OrderService {
     private final OrderEventProducer eventProducer;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final ProductCatalog productCatalog;
+    private final PaymentProperties paymentProperties;
 
     @Transactional
     public OrderResponse placeOrder(UUID userId, String userEmail, OrderRequest request) {
@@ -146,7 +148,8 @@ public class OrderService {
      */
     @Transactional
     public void handleInventoryReserved(UUID orderId) {
-        if (confirmOrder(orderId)) {
+        // With payments enabled the order stays PENDING (stock reserved) until the customer pays
+        if (!paymentProperties.enabled() && confirmOrder(orderId)) {
             return;
         }
         Order order = lockOrder(orderId);
@@ -156,6 +159,37 @@ public class OrderService {
                     .reason("Order was cancelled before stock was reserved")
                     .build());
         }
+    }
+
+    /** Payment succeeded: PENDING → CONFIRMED. Returns false if the order was no longer PENDING. */
+    @Transactional
+    public boolean confirmPaidOrder(UUID orderId) {
+        if (!confirmOrder(orderId)) {
+            return false;
+        }
+        Order order = lockOrder(orderId);
+        // Lets the monolith commit the reserved stock and send the confirmation email
+        applicationEventPublisher.publishEvent(
+                new OrderStatusChangedApplicationEvent(this, orderId, order.getUserEmail(), OrderStatus.CONFIRMED));
+        return true;
+    }
+
+    /** No payment arrived in time: PENDING → CANCELLED and the reserved stock is released. */
+    @Transactional
+    public boolean cancelUnpaidOrder(UUID orderId) {
+        Order order = lockOrder(orderId);
+        if (order.getStatus() != OrderStatus.PENDING) {
+            return false;
+        }
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+
+        eventProducer.publishOrderCancelled(cancelledEvent(order, "Payment not completed in time"));
+        eventProducer.publishInventoryRelease(InventoryReleaseEvent.builder()
+                .orderId(orderId).reason("Payment not completed in time").build());
+        applicationEventPublisher.publishEvent(
+                new OrderCancelledApplicationEvent(this, order.getId(), order.getUserEmail()));
+        return true;
     }
 
     /** Stock could not be reserved: PENDING → CANCELLED. Returns false if the order was no longer PENDING. */

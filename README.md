@@ -392,9 +392,18 @@ A confirmation email is sent once the order moves to `CONFIRMED`.
 
 #### Order status lifecycle
 ```
-PENDING → CONFIRMED   (stock reserved automatically)
-        → CANCELLED   (insufficient stock, or cancelled by user/admin)
+PENDING → CONFIRMED   (stock reserved; with Stripe enabled, once the payment succeeds)
+        → CANCELLED   (insufficient stock, unpaid after the timeout, or cancelled by user/admin)
 ```
+
+#### Pay for an order (authenticated — Stripe, optional)
+```http
+POST /api/v1/orders/{id}/checkout
+Authorization: Bearer <token>
+```
+**Response — 200 OK** — `{ "url": "https://checkout.stripe.com/..." }`: redirect the customer there. `url` is `null` when payments are not enabled. `409` if the order is no longer `PENDING`.
+
+See [Payments (Stripe)](#-payments-stripe) for setup.
 
 #### List my orders (authenticated)
 ```http
@@ -463,6 +472,23 @@ Authorization: Bearer <admin-token>
 GET /api/v1/admin/users/{id}
 Authorization: Bearer <admin-token>
 ```
+
+---
+
+## 💳 Payments (Stripe)
+
+Payment is optional. With no Stripe keys configured, orders are confirmed automatically (no payment step). With keys set:
+
+1. `POST /api/v1/orders` creates the order as `PENDING` and reserves the stock.
+2. The frontend calls `POST /api/v1/orders/{id}/checkout` and redirects to Stripe's hosted payment page. Card data never touches this app.
+3. Stripe calls `POST /api/v1/payments/webhook` (signature-verified). A paid session confirms the order and commits the stock.
+4. Orders still unpaid after `UNPAID_ORDER_TIMEOUT_MINUTES` (default 35) are cancelled and their stock is released. A payment that arrives for an order that can no longer be confirmed, or with the wrong amount, is refunded automatically.
+
+**Setup (test mode)**
+1. Create a free Stripe account and stay in **test mode**. Copy the secret key (`sk_test_...`) from Developers → API keys.
+2. Developers → Webhooks → add endpoint `https://<your-api>/api/v1/payments/webhook`, event `checkout.session.completed`. Copy its signing secret (`whsec_...`).
+3. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `FRONTEND_URL` (the deployed frontend, used for the success/cancel redirects) on the backend. Never commit them.
+4. Pay with the test card `4242 4242 4242 4242`, any future expiry, any CVC.
 
 ---
 
@@ -554,6 +580,10 @@ API available at `http://localhost:10000`
 | `RATE_LIMIT_CLIENT_IP_HEADER` | `CF-Connecting-IP` | Trusted header with the real client IP for rate limiting |
 | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker (optional) |
 | `RESEND_API_KEY` | — | Resend API key for emails (optional) |
+| `STRIPE_SECRET_KEY` | — | Stripe secret key (`sk_test_...`). Payments are enabled only when this and the webhook secret are set |
+| `STRIPE_WEBHOOK_SECRET` | — | Stripe webhook signing secret (`whsec_...`) |
+| `FRONTEND_URL` | `http://localhost:3000` | Frontend base URL for Stripe's success/cancel redirects |
+| `UNPAID_ORDER_TIMEOUT_MINUTES` | `35` | Unpaid orders are cancelled and their stock released after this long |
 
 ---
 
