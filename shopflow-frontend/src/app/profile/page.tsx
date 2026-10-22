@@ -4,10 +4,10 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { deleteAddress, getAddresses, getMe, getMyOrders, updateAddress } from "@/lib/queries";
+import { deleteAddress, getAddresses, getMe, getAllMyOrders, updateAddress } from "@/lib/queries";
 import { formatAddress } from "@/components/AddressForm";
 import { Button } from "@/components/ui/button";
-import { apiErrorMessage } from "@/lib/utils";
+import { apiErrorMessage, parseServerDate } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,17 +42,16 @@ export default function ProfilePage() {
   });
 
   const { data: orders, isLoading: loadingOrders } = useQuery({
-    queryKey: ["orders", 0],
-    queryFn: () => getMyOrders(0),
+    queryKey: ["orders", "all"],
+    queryFn: getAllMyOrders,
     enabled: !!user,
   });
 
-  const confirmed = orders?.content.filter((o) => o.status === "CONFIRMED").length ?? 0;
-  const pending = orders?.content.filter((o) => o.status === "PENDING").length ?? 0;
-  const cancelled = orders?.content.filter((o) => o.status === "CANCELLED").length ?? 0;
-  const totalSpent = orders?.content
-    .filter((o) => o.status === "CONFIRMED")
-    .reduce((sum, o) => sum + o.totalAmount, 0) ?? 0;
+  const confirmed = orders?.filter((o) => o.status === "CONFIRMED").length ?? 0;
+  const pending = orders?.filter((o) => o.status === "PENDING").length ?? 0;
+  const cancelled = orders?.filter((o) => o.status === "CANCELLED").length ?? 0;
+  const totalSpent =
+    orders?.filter((o) => o.status === "CONFIRMED").reduce((sum, o) => sum + o.totalAmount, 0) ?? 0;
 
   if (!user) return null;
 
@@ -113,7 +112,7 @@ export default function ProfilePage() {
                       <Calendar className="h-4 w-4 text-slate-400" />
                       <div>
                         <p className="text-slate-500 text-xs">Member since</p>
-                        <p className="font-medium">{new Date(profile.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
+                        <p className="font-medium">{parseServerDate(profile.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
                       </div>
                     </div>
                   )}
@@ -140,7 +139,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-slate-50 rounded-xl p-4 text-center">
                   <ShoppingCart className="h-6 w-6 text-slate-400 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-slate-900">{orders?.totalElements ?? 0}</p>
+                  <p className="text-2xl font-bold text-slate-900">{orders?.length ?? 0}</p>
                   <p className="text-xs text-slate-500">Total Orders</p>
                 </div>
                 <div className="bg-green-50 rounded-xl p-4 text-center">

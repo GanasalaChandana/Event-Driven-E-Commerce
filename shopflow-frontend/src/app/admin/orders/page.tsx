@@ -1,5 +1,6 @@
 "use client";
 
+import { parseServerDate } from "@/lib/utils";
 import { formatAddress } from "@/components/AddressForm";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,7 +48,7 @@ export default function AdminOrdersPage() {
   const filtered = useMemo(() => {
     if (!data?.content) return [];
     return data.content.filter((order: Order) => {
-      const created = new Date(order.createdAt);
+      const created = parseServerDate(order.createdAt);
       if (fromDate && created < new Date(fromDate)) return false;
       if (toDate && created > new Date(toDate + "T23:59:59")) return false;
       return true;
@@ -134,7 +135,7 @@ export default function AdminOrdersPage() {
                   <div>
                     <CardTitle className="text-sm font-mono">#{order.id.slice(0, 8).toUpperCase()}</CardTitle>
                     <p className="text-xs text-slate-400 mt-1">
-                      {order.userEmail} · {new Date(order.createdAt).toLocaleDateString("en-US", {
+                      {order.userEmail} · {parseServerDate(order.createdAt).toLocaleDateString("en-US", {
                         year: "numeric", month: "short", day: "numeric"
                       })}
                     </p>

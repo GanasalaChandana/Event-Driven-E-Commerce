@@ -52,6 +52,19 @@ export const getMyOrders = (page = 0) =>
 export const placeOrder = (items: { productId: string; quantity: number }[], shippingAddress: ShippingAddress) =>
   api.post<Order>("/api/v1/orders", { items, shippingAddress }).then((r) => r.data);
 
+/** Every order of the current user (pages through the list) — used for the profile statistics. */
+export const getAllMyOrders = async () => {
+  const all: Order[] = [];
+  for (let page = 0; page < 50; page++) {
+    const res = await api
+      .get<Page<Order>>("/api/v1/orders", { params: { page, size: 100 } })
+      .then((r) => r.data);
+    all.push(...res.content);
+    if (page + 1 >= res.totalPages) break;
+  }
+  return all;
+};
+
 export const getOrder = (id: string) =>
   api.get<Order>(`/api/v1/orders/${id}`).then((r) => r.data);
 

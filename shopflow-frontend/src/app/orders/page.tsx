@@ -17,7 +17,7 @@ import { Package, X, Loader2, ShoppingBag, CreditCard } from "lucide-react";
 import { Order } from "@/lib/types";
 import { useEffect } from "react";
 import Link from "next/link";
-import { apiErrorMessage, redirectTo } from "@/lib/utils";
+import { apiErrorMessage, redirectTo, parseServerDate } from "@/lib/utils";
 
 const statusColor: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
@@ -114,7 +114,7 @@ export default function OrdersPage() {
                         #{order.id.slice(0, 8).toUpperCase()}
                       </CardTitle>
                       <p className="text-xs text-slate-400 mt-1">
-                        {new Date(order.createdAt).toLocaleDateString("en-US", {
+                        {parseServerDate(order.createdAt).toLocaleDateString("en-US", {
                           year: "numeric", month: "long", day: "numeric",
                           hour: "2-digit", minute: "2-digit",
                         })}

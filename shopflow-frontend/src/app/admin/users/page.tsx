@@ -1,5 +1,6 @@
 "use client";
 
+import { parseServerDate } from "@/lib/utils";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import AdminLayout from "@/components/AdminLayout";
@@ -54,7 +55,7 @@ export default function AdminUsersPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-500">
-                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
+                      {user.createdAt ? parseServerDate(user.createdAt).toLocaleDateString() : "—"}
                     </td>
                   </tr>
                 ))}
