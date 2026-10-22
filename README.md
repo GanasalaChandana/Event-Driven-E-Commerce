@@ -128,7 +128,8 @@ Built with **Next.js 14**, **Tailwind CSS**, and **shadcn/ui**. Connects to the 
 - Optional Stripe Checkout payments (card details never touch the app), with automatic refunds when a paid order is cancelled
 - Order placement with automatic PENDING → CONFIRMED fulfillment
 - User-initiated order cancellation (PENDING orders only)
-- Admin dashboard: manage all orders, users, inventory, and categories
+- Product images (admin pastes an image URL; category-themed placeholders otherwise)
+- Admin dashboard: revenue chart (last 14 days), orders by status, and management of orders, users, inventory, and categories
 - Email notifications via Resend API (order confirmed, order cancelled, welcome)
 - IP-based rate limiting via Bucket4j (20 req/min)
 - Paginated responses throughout

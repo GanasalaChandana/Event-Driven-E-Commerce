@@ -8,12 +8,13 @@ import Link from "next/link";
 import { getProduct, getInventory } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import Navbar from "@/components/Navbar";
+import ProductImage from "@/components/ProductImage";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import {
-  ShoppingCart, Package, ArrowLeft, CheckCircle,
+  ShoppingCart, ArrowLeft, CheckCircle,
   AlertCircle, Tag
 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
@@ -81,12 +82,9 @@ export default function ProductDetailPage() {
         </Link>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left — Product image placeholder */}
-          <div className="bg-white rounded-2xl border flex items-center justify-center h-80 shadow-sm">
-            <div className="text-center text-slate-300">
-              <Package className="h-20 w-20 mx-auto mb-2" />
-              <p className="text-sm">No image available</p>
-            </div>
+          {/* Left — Product image */}
+          <div className="bg-white rounded-2xl border h-80 shadow-sm overflow-hidden">
+            <ProductImage product={product} className="h-full w-full" iconSize="h-24 w-24" />
           </div>
 
           {/* Right — Product info */}

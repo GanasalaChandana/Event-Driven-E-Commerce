@@ -25,5 +25,7 @@ public class ProductRequest {
 
     private UUID categoryId;
 
+    @Size(max = 500, message = "Image URL must be at most 500 characters")
+    @Pattern(regexp = "^(https?://\\S+)?$", message = "Image URL must start with http:// or https://")
     private String imageUrl;
 }

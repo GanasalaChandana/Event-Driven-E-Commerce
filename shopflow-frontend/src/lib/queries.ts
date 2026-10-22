@@ -79,6 +79,19 @@ export const cancelOrder = (id: string) =>
 export const getAllOrders = (params?: { status?: string; page?: number }) =>
   api.get<Page<Order>>("/api/v1/admin/orders", { params }).then((r) => r.data);
 
+/** Every order in the system (pages through the list) — used for the dashboard numbers and chart. */
+export const getEveryOrder = async () => {
+  const all: Order[] = [];
+  for (let page = 0; page < 50; page++) {
+    const res = await api
+      .get<Page<Order>>("/api/v1/admin/orders", { params: { page, size: 100 } })
+      .then((r) => r.data);
+    all.push(...res.content);
+    if (page + 1 >= res.totalPages) break;
+  }
+  return all;
+};
+
 export const updateOrderStatus = (id: string, status: string) =>
   api.patch<Order>(`/api/v1/admin/orders/${id}/status`, { status }).then((r) => r.data);
 

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Package } from "lucide-react";
 import Link from "next/link";
+import ProductImage from "@/components/ProductImage";
 
 export default function ProductCard({ product }: { product: Product }) {
   const addToCart = useCartStore((s) => s.add);
@@ -31,8 +32,11 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <Card className="flex flex-col hover:shadow-md transition-shadow">
-      <CardContent className="flex-1 pt-6">
+    <Card className="flex flex-col hover:shadow-md transition-shadow overflow-hidden pt-0">
+      <Link href={`/products/${product.id}`} aria-label={product.name}>
+        <ProductImage product={product} className="h-44 w-full" />
+      </Link>
+      <CardContent className="flex-1 pt-4">
         {/* Category badge */}
         {product.category && (
           <Badge variant="secondary" className="mb-3 text-xs">

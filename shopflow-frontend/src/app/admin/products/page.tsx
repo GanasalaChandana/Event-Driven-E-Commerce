@@ -15,9 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Product } from "@/lib/types";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import ProductImage from "@/components/ProductImage";
 import { apiErrorMessage } from "@/lib/utils";
 
-const emptyForm = { name: "", description: "", price: "", sku: "", categoryId: "" };
+const emptyForm = { name: "", description: "", price: "", sku: "", categoryId: "", imageUrl: "" };
 
 export default function AdminProductsPage() {
   const queryClient = useQueryClient();
@@ -43,6 +44,7 @@ export default function AdminProductsPage() {
         price: parseFloat(form.price),
         sku: form.sku,
         categoryId: form.categoryId || null,
+        imageUrl: form.imageUrl.trim() || null,
       };
       return editing ? updateProduct(editing.id, payload) : createProduct(payload);
     },
@@ -73,6 +75,7 @@ export default function AdminProductsPage() {
       price: p.price.toString(),
       sku: p.sku,
       categoryId: p.category?.id || "",
+      imageUrl: p.imageUrl || "",
     });
     setOpen(true);
   };
@@ -110,7 +113,12 @@ export default function AdminProductsPage() {
               <tbody>
                 {data?.content.map((product) => (
                   <tr key={product.id} className="border-b last:border-0 hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium">{product.name}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <div className="flex items-center gap-3">
+                        <ProductImage product={product} className="h-9 w-9 rounded-md shrink-0" iconSize="h-4 w-4" />
+                        {product.name}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-slate-500">{product.sku}</td>
                     <td className="px-4 py-3 font-semibold text-blue-600">${product.price.toFixed(2)}</td>
                     <td className="px-4 py-3">
@@ -162,6 +170,16 @@ export default function AdminProductsPage() {
                 <Label>SKU *</Label>
                 <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Image URL (optional)</Label>
+              <Input
+                type="url"
+                placeholder="https://…/photo.jpg"
+                value={form.imageUrl}
+                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              />
+              <p className="text-xs text-slate-400">Leave empty to show a category placeholder.</p>
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
