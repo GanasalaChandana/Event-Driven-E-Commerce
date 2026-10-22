@@ -1,5 +1,6 @@
 "use client";
 
+import { formatAddress } from "@/components/AddressForm";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -173,6 +174,12 @@ export default function AdminOrdersPage() {
                     </div>
                   ))}
                 </div>
+                {order.shippingAddress && (
+                  <p className="mb-3 text-xs text-slate-500">
+                    <span className="font-medium text-slate-600">Ship to: </span>
+                    {formatAddress(order.shippingAddress).replace(/\n/g, ", ")}
+                  </p>
+                )}
                 <div className="flex justify-between font-semibold text-sm border-t pt-2">
                   <span>Total</span>
                   <span className="text-blue-600">${order.totalAmount.toFixed(2)}</span>

@@ -17,6 +17,7 @@ public class OrderResponse {
     private String status;
     private BigDecimal totalAmount;
     private List<OrderItemResponse> items;
+    private ShippingAddressDto shippingAddress;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -28,6 +29,7 @@ public class OrderResponse {
                 .status(order.getStatus().name())
                 .totalAmount(order.getTotalAmount())
                 .items(order.getItems().stream().map(OrderItemResponse::from).toList())
+                .shippingAddress(ShippingAddressDto.from(order.getShippingAddress()))
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();

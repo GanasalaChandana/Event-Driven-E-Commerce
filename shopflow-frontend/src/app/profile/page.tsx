@@ -2,8 +2,12 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { getMe, getMyOrders } from "@/lib/queries";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { deleteAddress, getAddresses, getMe, getMyOrders, updateAddress } from "@/lib/queries";
+import { formatAddress } from "@/components/AddressForm";
+import { Button } from "@/components/ui/button";
+import { apiErrorMessage } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import Navbar from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +23,17 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) router.push("/login");
   }, [user, router]);
+
+  const queryClient = useQueryClient();
+  const { data: addresses } = useQuery({ queryKey: ["addresses"], queryFn: getAddresses, enabled: !!user });
+  const refreshAddresses = () => queryClient.invalidateQueries({ queryKey: ["addresses"] });
+  const onError = (err: unknown) => toast.error(apiErrorMessage(err, "Something went wrong"));
+  const { mutate: removeAddress } = useMutation({ mutationFn: deleteAddress, onSuccess: refreshAddresses, onError });
+  const { mutate: makeDefault } = useMutation({
+    mutationFn: (a: NonNullable<typeof addresses>[number]) => updateAddress(a.id, { ...a, defaultAddress: true }),
+    onSuccess: refreshAddresses,
+    onError,
+  });
 
   const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ["me"],
@@ -152,6 +167,31 @@ export default function ProfilePage() {
                 <span className="text-xl font-bold text-blue-600">${totalSpent.toFixed(2)}</span>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">Saved addresses</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {addresses && addresses.length === 0 && (
+              <p className="text-sm text-slate-500">No saved addresses yet — you can add one at checkout.</p>
+            )}
+            {addresses?.map((a) => (
+              <div key={a.id} className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                <p className="text-sm text-slate-700 whitespace-pre-line">
+                  {formatAddress(a)}
+                  {a.defaultAddress && <span className="ml-2 text-xs text-blue-600">Default</span>}
+                </p>
+                <div className="flex gap-2 shrink-0">
+                  {!a.defaultAddress && (
+                    <Button size="sm" variant="outline" onClick={() => makeDefault(a)}>Make default</Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => removeAddress(a.id)}>Delete</Button>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </main>

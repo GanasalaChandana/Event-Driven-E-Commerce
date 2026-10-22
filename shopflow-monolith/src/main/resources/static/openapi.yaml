@@ -128,12 +128,27 @@ components:
 
     OrderRequest:
       type: object
-      required: [items]
+      required: [items, shippingAddress]
       properties:
         items:
           type: array
           items:
             $ref: '#/components/schemas/OrderItemRequest'
+        shippingAddress:
+          $ref: '#/components/schemas/ShippingAddress'
+
+    ShippingAddress:
+      type: object
+      required: [fullName, line1, city, state, postalCode, country]
+      properties:
+        fullName: { type: string, maxLength: 100 }
+        line1: { type: string, maxLength: 150 }
+        line2: { type: string, maxLength: 150 }
+        city: { type: string }
+        state: { type: string }
+        postalCode: { type: string }
+        country: { type: string, description: 2-letter code, example: US }
+        phone: { type: string }
 
     OrderItemResponse:
       type: object

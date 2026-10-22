@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getMyOrders, cancelOrder, checkoutOrder } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
+import { formatAddress } from "@/components/AddressForm";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -174,6 +175,12 @@ export default function OrdersPage() {
                       </div>
                     ))}
                   </div>
+                  {order.shippingAddress && (
+                    <p className="mt-3 text-xs text-slate-500 whitespace-pre-line">
+                      <span className="font-medium text-slate-600">Ship to: </span>
+                      {formatAddress(order.shippingAddress).replace(/\n/g, ", ")}
+                    </p>
+                  )}
                   <Separator className="my-3" />
                   <div className="flex justify-between font-semibold">
                     <span>Total</span>

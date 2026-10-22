@@ -1,5 +1,5 @@
 import { api } from "./api";
-import { AuthResponse, Category, InventoryItem, Order, Page, Product, User } from "./types";
+import { Address, AuthResponse, ShippingAddress, Category, InventoryItem, Order, Page, Product, User } from "./types";
 
 // Auth
 export const login = (email: string, password: string) =>
@@ -49,8 +49,8 @@ export const getMyOrders = (page = 0) =>
   api.get<Page<Order>>("/api/v1/orders", { params: { page, size: 10 } }).then((r) => r.data);
 
 // Prices and names are looked up by the server — only product IDs and quantities are sent
-export const placeOrder = (items: { productId: string; quantity: number }[]) =>
-  api.post<Order>("/api/v1/orders", { items }).then((r) => r.data);
+export const placeOrder = (items: { productId: string; quantity: number }[], shippingAddress: ShippingAddress) =>
+  api.post<Order>("/api/v1/orders", { items, shippingAddress }).then((r) => r.data);
 
 export const getOrder = (id: string) =>
   api.get<Order>(`/api/v1/orders/${id}`).then((r) => r.data);
@@ -58,13 +58,6 @@ export const getOrder = (id: string) =>
 /** Starts payment for a PENDING order. url is null when the server has payments disabled. */
 export const checkoutOrder = (id: string) =>
   api.post<{ url: string | null }>(`/api/v1/orders/${id}/checkout`).then((r) => r.data);
-
-/** Places the order, then asks for a Stripe payment page. checkoutUrl is null when payments are off. */
-export const placeOrderAndPay = async (items: { productId: string; quantity: number }[]) => {
-  const order = await placeOrder(items);
-  const { url } = await checkoutOrder(order.id);
-  return { order, checkoutUrl: url };
-};
 
 export const cancelOrder = (id: string) =>
   api.post<Order>(`/api/v1/orders/${id}/cancel`).then((r) => r.data);
@@ -82,3 +75,18 @@ export const getAllUsers = (page = 0) =>
 
 export const getMe = () =>
   api.get<User>("/api/v1/users/me").then((r) => r.data);
+
+// Address book
+export type AddressInput = ShippingAddress & { defaultAddress?: boolean };
+
+export const getAddresses = () =>
+  api.get<Address[]>("/api/v1/users/me/addresses").then((r) => r.data);
+
+export const createAddress = (data: AddressInput) =>
+  api.post<Address>("/api/v1/users/me/addresses", data).then((r) => r.data);
+
+export const updateAddress = (id: string, data: AddressInput) =>
+  api.put<Address>(`/api/v1/users/me/addresses/${id}`, data).then((r) => r.data);
+
+export const deleteAddress = (id: string) =>
+  api.delete(`/api/v1/users/me/addresses/${id}`);

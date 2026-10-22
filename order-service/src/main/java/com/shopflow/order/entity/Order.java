@@ -33,6 +33,10 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
+    /** Where to deliver it (null for orders placed before addresses were collected). */
+    @Embedded
+    private ShippingAddress shippingAddress;
+
     /** Stripe payment that paid for this order (null if unpaid or payments were disabled). */
     @Column(name = "payment_intent_id", length = 100)
     private String paymentIntentId;

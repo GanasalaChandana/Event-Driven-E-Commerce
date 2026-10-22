@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
-import { getProduct, getInventory, placeOrderAndPay } from "@/lib/queries";
+import { getProduct, getInventory } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -14,16 +14,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import {
   ShoppingCart, Package, ArrowLeft, CheckCircle,
-  AlertCircle, Tag, Loader2
+  AlertCircle, Tag
 } from "lucide-react";
-import { apiErrorMessage, redirectTo } from "@/lib/utils";
 import { useCartStore } from "@/store/cart";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
-  const queryClient = useQueryClient();
   const [qty, setQty] = useState(1);
   const addToCart = useCartStore((s) => s.add);
 
@@ -36,25 +34,6 @@ export default function ProductDetailPage() {
     queryKey: ["inventory", id],
     queryFn: () => getInventory(id),
     enabled: !!id,
-  });
-
-  const { mutate: order, isPending } = useMutation({
-    mutationFn: () =>
-      placeOrderAndPay([{ productId: id, quantity: qty }]),
-    onSuccess: ({ order: data, checkoutUrl }) => {
-      if (checkoutUrl) {
-        toast.success("Order created — redirecting to secure payment…");
-        redirectTo(checkoutUrl);
-        return;
-      }
-      toast.success("Order placed successfully!");
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["inventory", id] });
-      router.push(`/orders/confirmation?orderId=${data.id}&total=${data.totalAmount}`);
-    },
-    onError: (err: unknown) => {
-      toast.error(apiErrorMessage(err, "Failed to place order"));
-    },
   });
 
   const available = inventory?.availableQuantity ?? 0;
@@ -178,7 +157,6 @@ export default function ProductDetailPage() {
                   size="lg"
                   variant="outline"
                   className="w-full"
-                  disabled={isPending}
                   onClick={() => {
                     addToCart({ productId: id, name: product.name, price: product.price }, qty, available);
                     toast.success(`${product.name} added to cart`);
@@ -190,17 +168,13 @@ export default function ProductDetailPage() {
                 <Button
                   size="lg"
                   className="w-full"
-                  disabled={isPending}
                   onClick={() => {
                     if (!user) { router.push("/login"); return; }
-                    order();
+                    addToCart({ productId: id, name: product.name, price: product.price }, qty, available);
+                    router.push("/checkout");
                   }}
                 >
-                  {isPending ? (
-                    <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Placing Order...</>
-                  ) : (
-                    <>{user ? "Buy now" : "Login to Order"}</>
-                  )}
+                  {user ? "Buy now" : "Login to order"}
                 </Button>
 
                 {!user && (

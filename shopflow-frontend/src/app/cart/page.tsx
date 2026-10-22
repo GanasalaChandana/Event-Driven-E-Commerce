@@ -1,67 +1,25 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { toast } from "sonner";
-import { Loader2, Minus, Plus, ShoppingBag, Trash2, CreditCard } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, CreditCard } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { placeOrder, checkoutOrder } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import { useCartStore } from "@/store/cart";
-import { apiErrorMessage, redirectTo } from "@/lib/utils";
 
 export default function CartPage() {
   const { user } = useAuthStore();
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const { items, setQuantity, remove, clear } = useCartStore();
+  const { items, setQuantity, remove } = useCartStore();
 
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const count = items.reduce((n, i) => n + i.quantity, 0);
 
-  const { mutate: checkout, isPending } = useMutation({
-    mutationFn: async () => {
-      const order = await placeOrder(items.map((i) => ({ productId: i.productId, quantity: i.quantity })));
-      // The order exists now, so empty the cart before anything else can fail — a retry must not duplicate it
-      clear();
-      try {
-        const { url } = await checkoutOrder(order.id);
-        return { order, url, payError: null as string | null };
-      } catch (err) {
-        return { order, url: null, payError: apiErrorMessage(err, "Could not start payment") };
-      }
-    },
-    onSuccess: ({ order, url, payError }) => {
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      if (url) {
-        toast.success("Order created — redirecting to secure payment…");
-        redirectTo(url);
-        return;
-      }
-      if (payError) {
-        toast.error(`${payError}. You can retry from My Orders.`);
-        router.push("/orders");
-        return;
-      }
-      toast.success("Order placed! Check your email for confirmation.");
-      router.push(`/orders/confirmation?orderId=${order.id}&total=${order.totalAmount}`);
-    },
-    onError: (err: unknown) => {
-      toast.error(apiErrorMessage(err, "Failed to place order"));
-    },
-  });
-
   const handleCheckout = () => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    checkout();
+    router.push(user ? "/checkout" : "/login");
   };
 
   return (
@@ -140,18 +98,12 @@ export default function CartPage() {
                   <span>Total</span>
                   <span className="text-blue-600">${total.toFixed(2)}</span>
                 </div>
-                <Button className="w-full" size="lg" disabled={isPending} onClick={handleCheckout}>
-                  {isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      {user ? "Checkout" : "Login to Checkout"}
-                    </>
-                  )}
+                <Button className="w-full" size="lg" onClick={handleCheckout}>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  {user ? "Proceed to checkout" : "Login to checkout"}
                 </Button>
                 <p className="text-xs text-slate-400 text-center">
-                  Final prices are confirmed by the server at checkout.
+                  Next: delivery address, then secure card payment.
                 </p>
               </CardContent>
             </Card>

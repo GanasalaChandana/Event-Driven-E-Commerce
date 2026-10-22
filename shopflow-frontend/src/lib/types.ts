@@ -58,6 +58,22 @@ export interface OrderItem {
   subtotal: number;
 }
 
+export interface ShippingAddress {
+  fullName: string;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone?: string | null;
+}
+
+export interface Address extends ShippingAddress {
+  id: string;
+  defaultAddress: boolean;
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -65,6 +81,7 @@ export interface Order {
   status: "PENDING" | "CONFIRMED" | "CANCELLED";
   totalAmount: number;
   items: OrderItem[];
+  shippingAddress?: ShippingAddress | null;
   createdAt: string;
   updatedAt: string;
 }

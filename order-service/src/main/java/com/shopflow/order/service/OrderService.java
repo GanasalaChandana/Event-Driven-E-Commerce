@@ -84,6 +84,7 @@ public class OrderService {
                 .userEmail(userEmail)
                 .status(OrderStatus.PENDING)
                 .totalAmount(total)
+                .shippingAddress(request.getShippingAddress().toEntity())
                 .build();
 
         items.forEach(item -> {

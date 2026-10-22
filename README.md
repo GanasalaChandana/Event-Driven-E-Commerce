@@ -478,6 +478,14 @@ Authorization: Bearer <admin-token>
 
 ---
 
+## 🛒 Cart, addresses & checkout
+
+Browse → **Add to cart** → **Checkout**: pick a saved delivery address (or add a new one, optionally saving it to your account) → **Place order & pay**, which sends you to Stripe's hosted page for card details.
+
+- Saved addresses live in the user service (`/api/v1/users/me/addresses`, max 10 per user, one default).
+- Each order stores a *copy* of the address it ships to (`shippingAddress` is required on `POST /api/v1/orders`), so later edits don't change past orders.
+- Card and bank details are entered only on Stripe's page — the app never sees or stores them.
+
 ## 💳 Payments (Stripe)
 
 Payment is optional. With no Stripe keys configured, orders are confirmed automatically (no payment step). With keys set:

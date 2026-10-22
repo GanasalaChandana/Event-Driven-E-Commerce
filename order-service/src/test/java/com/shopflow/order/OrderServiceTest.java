@@ -4,6 +4,7 @@ import com.shopflow.order.catalog.ProductCatalog;
 import com.shopflow.order.dto.OrderItemRequest;
 import com.shopflow.order.dto.OrderRequest;
 import com.shopflow.order.dto.OrderResponse;
+import com.shopflow.order.dto.ShippingAddressDto;
 import com.shopflow.order.entity.Order;
 import com.shopflow.order.entity.OrderStatus;
 import com.shopflow.order.event.OrderRefundApplicationEvent;
@@ -58,6 +59,10 @@ class OrderServiceTest {
         return item;
     }
 
+    private static ShippingAddressDto address() {
+        return new ShippingAddressDto("  Jane Doe ", "1 Main St", " ", "Irving", "TX", "75038", "us", null);
+    }
+
     private static Order order(OrderStatus status) {
         return Order.builder().id(ORDER_ID).userId(USER_ID).userEmail("u@test.com")
                 .status(status).totalAmount(BigDecimal.TEN).build();
@@ -74,6 +79,7 @@ class OrderServiceTest {
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
         OrderRequest req = new OrderRequest();
+        req.setShippingAddress(address());
         req.setItems(List.of(line(p1, 2, "0.01"), line(p2, 3, "0.01")));   // client claims a 1-cent price
 
         OrderResponse response = orderService.placeOrder(USER_ID, "u@test.com", req);
@@ -86,6 +92,26 @@ class OrderServiceTest {
     }
 
     @Test
+    void placeOrder_storesCleanedShippingAddressOnTheOrder() {
+        UUID p1 = UUID.randomUUID();
+        when(productCatalog.findActiveProduct(p1)).thenReturn(
+                Optional.of(new ProductCatalog.ProductSnapshot(p1, "Headphones", new BigDecimal("10.00"))));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        OrderRequest req = new OrderRequest();
+        req.setShippingAddress(address());
+        req.setItems(List.of(line(p1, 1, "10")));
+
+        OrderResponse response = orderService.placeOrder(USER_ID, "u@test.com", req);
+
+        ShippingAddressDto saved = response.getShippingAddress();
+        assertThat(saved.getFullName()).isEqualTo("Jane Doe");   // trimmed
+        assertThat(saved.getLine2()).isNull();                   // blank -> null
+        assertThat(saved.getCountry()).isEqualTo("US");          // upper-cased
+        assertThat(saved.getPostalCode()).isEqualTo("75038");
+    }
+
+    @Test
     void placeOrder_mergesDuplicateProductLines() {
         UUID p1 = UUID.randomUUID();
         when(productCatalog.findActiveProduct(p1)).thenReturn(
@@ -93,6 +119,7 @@ class OrderServiceTest {
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
         OrderRequest req = new OrderRequest();
+        req.setShippingAddress(address());
         req.setItems(List.of(line(p1, 1, "10"), line(p1, 2, "10")));
 
         OrderResponse response = orderService.placeOrder(USER_ID, "u@test.com", req);
@@ -108,6 +135,7 @@ class OrderServiceTest {
         when(productCatalog.findActiveProduct(p1)).thenReturn(Optional.empty());
 
         OrderRequest req = new OrderRequest();
+        req.setShippingAddress(address());
         req.setItems(List.of(line(p1, 1, "10")));
 
         assertThatThrownBy(() -> orderService.placeOrder(USER_ID, "u@test.com", req))
