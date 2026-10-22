@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
+import { useCartStore } from "@/store/cart";
 import { ThemeProvider } from "next-themes";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
@@ -16,7 +17,8 @@ const queryClient = new QueryClient({
 
 function AuthInit({ children }: { children: React.ReactNode }) {
   const init = useAuthStore((s) => s.init);
-  useEffect(() => { init(); }, [init]);
+  const initCart = useCartStore((s) => s.init);
+  useEffect(() => { init(); initCart(); }, [init, initCart]);
   return <>{children}</>;
 }
 

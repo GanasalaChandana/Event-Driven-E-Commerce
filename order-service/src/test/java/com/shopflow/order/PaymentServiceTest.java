@@ -132,11 +132,11 @@ class PaymentServiceTest {
         paymentsOn();
         webhookSecret();
         when(orderService.getOrderById(ORDER_ID)).thenReturn(order("PENDING", "99.99"));
-        when(orderService.confirmPaidOrder(ORDER_ID)).thenReturn(true);
+        when(orderService.confirmPaidOrder(ORDER_ID, "pi_123")).thenReturn(true);
 
         deliver(sessionEvent("checkout.session.completed", "paid", 9999, ORDER_ID.toString()));
 
-        verify(orderService).confirmPaidOrder(ORDER_ID);
+        verify(orderService).confirmPaidOrder(ORDER_ID, "pi_123");
         verify(stripe, never()).refund(any());
     }
 
@@ -148,7 +148,7 @@ class PaymentServiceTest {
 
         deliver(sessionEvent("checkout.session.completed", "paid", 9999, ORDER_ID.toString()));
 
-        verify(orderService, never()).confirmPaidOrder(any());
+        verify(orderService, never()).confirmPaidOrder(any(), any());
         verify(stripe, never()).refund(any());
     }
 
@@ -157,7 +157,7 @@ class PaymentServiceTest {
         paymentsOn();
         webhookSecret();
         when(orderService.getOrderById(ORDER_ID)).thenReturn(order("CANCELLED", "99.99"));
-        when(orderService.confirmPaidOrder(ORDER_ID)).thenReturn(false);
+        when(orderService.confirmPaidOrder(ORDER_ID, "pi_123")).thenReturn(false);
 
         deliver(sessionEvent("checkout.session.completed", "paid", 9999, ORDER_ID.toString()));
 
@@ -172,7 +172,7 @@ class PaymentServiceTest {
 
         deliver(sessionEvent("checkout.session.completed", "paid", 100, ORDER_ID.toString()));
 
-        verify(orderService, never()).confirmPaidOrder(any());
+        verify(orderService, never()).confirmPaidOrder(any(), any());
         verify(stripe).refund("pi_123");
     }
 

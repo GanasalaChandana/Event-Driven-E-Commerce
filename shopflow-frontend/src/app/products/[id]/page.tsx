@@ -17,6 +17,7 @@ import {
   AlertCircle, Tag, Loader2
 } from "lucide-react";
 import { apiErrorMessage, redirectTo } from "@/lib/utils";
+import { useCartStore } from "@/store/cart";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,7 @@ export default function ProductDetailPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [qty, setQty] = useState(1);
+  const addToCart = useCartStore((s) => s.add);
 
   const { data: product, isLoading: loadingProduct } = useQuery({
     queryKey: ["product", id],
@@ -174,6 +176,19 @@ export default function ProductDetailPage() {
 
                 <Button
                   size="lg"
+                  variant="outline"
+                  className="w-full"
+                  disabled={isPending}
+                  onClick={() => {
+                    addToCart({ productId: id, name: product.name, price: product.price }, qty, available);
+                    toast.success(`${product.name} added to cart`);
+                  }}
+                >
+                  <ShoppingCart className="h-5 w-5 mr-2" /> Add to cart
+                </Button>
+
+                <Button
+                  size="lg"
                   className="w-full"
                   disabled={isPending}
                   onClick={() => {
@@ -184,7 +199,7 @@ export default function ProductDetailPage() {
                   {isPending ? (
                     <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> Placing Order...</>
                   ) : (
-                    <><ShoppingCart className="h-5 w-5 mr-2" /> {user ? "Place Order" : "Login to Order"}</>
+                    <>{user ? "Buy now" : "Login to Order"}</>
                   )}
                 </Button>
 

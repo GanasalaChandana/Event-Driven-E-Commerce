@@ -1,23 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Product } from "@/lib/types";
-import { placeOrderAndPay, getInventory } from "@/lib/queries";
-import { useAuthStore } from "@/store/auth";
+import { getInventory } from "@/lib/queries";
+import { useCartStore } from "@/store/cart";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Package, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ShoppingCart, Package } from "lucide-react";
 import Link from "next/link";
-import { apiErrorMessage, redirectTo } from "@/lib/utils";
 
 export default function ProductCard({ product }: { product: Product }) {
-  const { user } = useAuthStore();
-  const router = useRouter();
-  const queryClient = useQueryClient();
+  const addToCart = useCartStore((s) => s.add);
   const [qty, setQty] = useState(1);
 
   const { data: inventory } = useQuery({
@@ -25,34 +21,14 @@ export default function ProductCard({ product }: { product: Product }) {
     queryFn: () => getInventory(product.id),
   });
 
-  const { mutate: order, isPending } = useMutation({
-    mutationFn: () =>
-      placeOrderAndPay([{ productId: product.id, quantity: qty }]),
-    onSuccess: ({ checkoutUrl }) => {
-      if (checkoutUrl) {
-        toast.success("Order created — redirecting to secure payment…");
-        redirectTo(checkoutUrl);
-        return;
-      }
-      toast.success("Order placed! Check your email for confirmation.");
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["inventory", product.id] });
-    },
-    onError: (err: unknown) => {
-      toast.error(apiErrorMessage(err, "Failed to place order"));
-    },
-  });
-
-  const handleOrder = () => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    order();
-  };
-
   const available = inventory?.availableQuantity ?? 0;
   const inStock = available > 0;
+
+  const handleAdd = () => {
+    addToCart({ productId: product.id, name: product.name, price: product.price }, qty, available);
+    toast.success(`${product.name} added to cart`);
+    setQty(1);
+  };
 
   return (
     <Card className="flex flex-col hover:shadow-md transition-shadow">
@@ -98,17 +74,8 @@ export default function ProductCard({ product }: { product: Product }) {
             >+</button>
           </div>
         )}
-        <Button
-          className="flex-1"
-          disabled={!inStock || isPending}
-          onClick={handleOrder}
-          size="sm"
-        >
-          {isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <><ShoppingCart className="h-4 w-4 mr-1" /> {user ? "Order" : "Login to Order"}</>
-          )}
+        <Button className="flex-1" disabled={!inStock} onClick={handleAdd} size="sm">
+          <ShoppingCart className="h-4 w-4 mr-1" /> Add to cart
         </Button>
       </CardFooter>
     </Card>

@@ -4,12 +4,15 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
+import { useCartStore } from "@/store/cart";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, LayoutDashboard, LogOut, User, Menu, X, ShoppingCart, Package, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 
 export default function Navbar() {
   const { user, isAdmin, logout } = useAuthStore();
+  const cartCount = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0));
+  const clearCart = useCartStore((s) => s.clear);
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   // false during SSR/hydration, true once on the client (next-themes only knows the theme then)
@@ -18,6 +21,7 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
+    clearCart();
     router.push("/login");
     setMenuOpen(false);
   };
@@ -36,6 +40,14 @@ export default function Navbar() {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-4">
           <Link href="/products" className="text-sm text-slate-600 hover:text-slate-900">Products</Link>
+          <Link href="/cart" className="relative flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900">
+            <ShoppingCart className="h-4 w-4" /> Cart
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-4 min-w-4 h-4 px-1 rounded-full bg-blue-600 text-white text-[10px] leading-4 text-center">
+                {cartCount}
+              </span>
+            )}
+          </Link>
           {user ? (
             <>
               {!isAdmin && (
@@ -85,6 +97,9 @@ export default function Navbar() {
       {menuOpen && (
         <div className="md:hidden border-t bg-white px-4 py-3 space-y-1">
           <MobileLink href="/products" onClick={close} icon={<Package className="h-4 w-4" />}>Products</MobileLink>
+          <MobileLink href="/cart" onClick={close} icon={<ShoppingCart className="h-4 w-4" />}>
+            Cart{cartCount > 0 ? ` (${cartCount})` : ""}
+          </MobileLink>
 
           {user ? (
             <>

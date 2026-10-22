@@ -33,6 +33,10 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
+    /** Stripe payment that paid for this order (null if unpaid or payments were disabled). */
+    @Column(name = "payment_intent_id", length = 100)
+    private String paymentIntentId;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();

@@ -99,7 +99,7 @@ public class PaymentService {
             refundIfPossible(paymentIntent);
             return;
         }
-        if (orderService.confirmPaidOrder(orderId)) {
+        if (orderService.confirmPaidOrder(orderId, paymentIntent)) {
             log.info("Order {} paid and CONFIRMED", orderId);
         } else {
             log.warn("Order {} was {} when payment arrived — refunding", orderId, order.getStatus());

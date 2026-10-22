@@ -6,6 +6,7 @@ import com.shopflow.order.dto.OrderRequest;
 import com.shopflow.order.dto.OrderResponse;
 import com.shopflow.order.entity.Order;
 import com.shopflow.order.entity.OrderStatus;
+import com.shopflow.order.event.OrderRefundApplicationEvent;
 import com.shopflow.order.event.OrderStatusChangedApplicationEvent;
 import com.shopflow.order.exception.InvalidOrderStatusTransitionException;
 import com.shopflow.order.exception.OrderCancellationException;
@@ -176,7 +177,7 @@ class OrderServiceTest {
         when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(order(OrderStatus.PENDING)));
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThat(orderService.confirmPaidOrder(ORDER_ID)).isTrue();
+        assertThat(orderService.confirmPaidOrder(ORDER_ID, "pi_123")).isTrue();
 
         verify(eventProducer).publishOrderConfirmed(any());
         ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
@@ -190,9 +191,51 @@ class OrderServiceTest {
     void confirmPaidOrder_alreadyCancelled_returnsFalse() {
         when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(order(OrderStatus.CANCELLED)));
 
-        assertThat(orderService.confirmPaidOrder(ORDER_ID)).isFalse();
+        assertThat(orderService.confirmPaidOrder(ORDER_ID, "pi_123")).isFalse();
 
         verify(eventProducer, never()).publishOrderConfirmed(any());
+    }
+
+    @Test
+    void confirmPaidOrder_remembersThePayment() {
+        Order o = order(OrderStatus.PENDING);
+        when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        orderService.confirmPaidOrder(ORDER_ID, "pi_123");
+
+        assertThat(o.getPaymentIntentId()).isEqualTo("pi_123");
+    }
+
+    @Test
+    void updateOrderStatus_adminCancelOfPaidOrder_requestsRefund() {
+        Order o = order(OrderStatus.CONFIRMED);
+        o.setPaymentIntentId("pi_123");
+        when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        orderService.updateOrderStatus(ORDER_ID, OrderStatus.CANCELLED);
+
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+        verify(eventPublisher, times(2)).publishEvent(captor.capture());
+        assertThat(captor.getAllValues()).anySatisfy(e -> {
+            assertThat(e).isInstanceOf(OrderRefundApplicationEvent.class);
+            assertThat(((OrderRefundApplicationEvent) e).getPaymentIntentId()).isEqualTo("pi_123");
+        });
+    }
+
+    @Test
+    void updateOrderStatus_adminCancelOfUnpaidPendingOrder_doesNotRefund() {
+        Order o = order(OrderStatus.PENDING);
+        o.setPaymentIntentId("pi_123");
+        when(orderRepository.findWithLockById(ORDER_ID)).thenReturn(Optional.of(o));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        orderService.updateOrderStatus(ORDER_ID, OrderStatus.CANCELLED);
+
+        ArgumentCaptor<ApplicationEvent> captor = ArgumentCaptor.forClass(ApplicationEvent.class);
+        verify(eventPublisher, times(1)).publishEvent(captor.capture());
+        assertThat(captor.getValue()).isNotInstanceOf(OrderRefundApplicationEvent.class);
     }
 
     @Test

@@ -12,7 +12,7 @@ A production-grade full-stack e-commerce platform with a **Next.js frontend** an
 | ⚙️ **REST API (Render)** | https://event-driven-e-commerce.onrender.com |
 | 📖 **Swagger UI** | https://event-driven-e-commerce.onrender.com/swagger-ui.html |
 
-> ⚠️ The free Render backend spins down after inactivity. First request may take **30–60 seconds** to wake up.
+> ⚠️ The free Render backend spins down after inactivity. First request may take **30–60 seconds** to wake up. A scheduled GitHub Action (`.github/workflows/keep-alive.yml`) pings it every 10 minutes during daytime hours (US Central) to reduce cold starts, and the site shows a "waking up the server" notice when a request is slow.
 
 ### Demo Credentials
 | Role | Email | Password |
@@ -73,9 +73,11 @@ Built with **Next.js 14**, **Tailwind CSS**, and **shadcn/ui**. Connects to the 
 |---|---|
 | `/` | Home page with hero and features |
 | `/products` | Product catalog with search, category filter, pagination |
-| `/products/[id]` | Product detail page with stock level and order button |
+| `/products/[id]` | Product detail page with stock level, add to cart and buy now |
+| `/cart` | Shopping cart (saved in the browser) with one multi-item checkout |
 | `/orders` | My orders with cancel button (user) |
-| `/orders/confirmation` | Order success screen |
+| `/orders/confirmation` | Order success screen (payments disabled) |
+| `/orders/success` | Shown after Stripe payment; waits for the order to be confirmed |
 | `/profile` | Account details and order statistics |
 | `/login` / `/register` | Auth pages with JWT |
 | `/admin` | Dashboard with stats and recent orders |
@@ -93,6 +95,7 @@ Built with **Next.js 14**, **Tailwind CSS**, and **shadcn/ui**. Connects to the 
 
 - JWT authentication with role-based access (USER / ADMIN)
 - Product catalog with full-text search and category filtering
+- Shopping cart with multi-item orders and optional Stripe Checkout payments (refunds when a paid order is cancelled)
 - Order placement with automatic PENDING → CONFIRMED fulfillment
 - User-initiated order cancellation (PENDING orders only)
 - Admin dashboard: manage all orders, users, inventory, and categories
@@ -483,6 +486,7 @@ Payment is optional. With no Stripe keys configured, orders are confirmed automa
 2. The frontend calls `POST /api/v1/orders/{id}/checkout` and redirects to Stripe's hosted payment page. Card data never touches this app.
 3. Stripe calls `POST /api/v1/payments/webhook` (signature-verified). A paid session confirms the order and commits the stock.
 4. Orders still unpaid after `UNPAID_ORDER_TIMEOUT_MINUTES` (default 35) are cancelled and their stock is released. A payment that arrives for an order that can no longer be confirmed, or with the wrong amount, is refunded automatically.
+5. If an admin cancels an order that was already paid, the stock is released and the payment is refunded (the Stripe payment ID is stored on the order). A failed refund is logged as `REFUND FAILED` so it can be done by hand in the Stripe dashboard.
 
 **Setup (test mode)**
 1. Create a free Stripe account and stay in **test mode**. Copy the secret key (`sk_test_...`) from Developers → API keys.

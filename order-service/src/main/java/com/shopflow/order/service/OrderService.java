@@ -13,6 +13,7 @@ import com.shopflow.order.event.OrderCancelledEvent;
 import com.shopflow.order.event.OrderConfirmedEvent;
 import com.shopflow.order.event.OrderCreatedEvent;
 import com.shopflow.order.event.OrderPlacedApplicationEvent;
+import com.shopflow.order.event.OrderRefundApplicationEvent;
 import com.shopflow.order.event.OrderStatusChangedApplicationEvent;
 import com.shopflow.order.exception.InvalidOrderStatusTransitionException;
 import com.shopflow.order.exception.OrderCancellationException;
@@ -163,11 +164,13 @@ public class OrderService {
 
     /** Payment succeeded: PENDING → CONFIRMED. Returns false if the order was no longer PENDING. */
     @Transactional
-    public boolean confirmPaidOrder(UUID orderId) {
+    public boolean confirmPaidOrder(UUID orderId, String paymentIntentId) {
         if (!confirmOrder(orderId)) {
             return false;
         }
         Order order = lockOrder(orderId);
+        order.setPaymentIntentId(paymentIntentId);
+        orderRepository.save(order);
         // Lets the monolith commit the reserved stock and send the confirmation email
         applicationEventPublisher.publishEvent(
                 new OrderStatusChangedApplicationEvent(this, orderId, order.getUserEmail(), OrderStatus.CONFIRMED));
@@ -260,6 +263,9 @@ public class OrderService {
             throw new InvalidOrderStatusTransitionException(orderId, current, newStatus);
         }
 
+        boolean refundPayment = current == OrderStatus.CONFIRMED && newStatus == OrderStatus.CANCELLED
+                && order.getPaymentIntentId() != null;
+
         order.setStatus(newStatus);
         orderRepository.save(order);
         log.info("Order {} status updated {} -> {} by admin", orderId, current, newStatus);
@@ -276,6 +282,10 @@ public class OrderService {
             eventProducer.publishOrderCancelled(cancelledEvent(order, "Cancelled by admin"));
             eventProducer.publishInventoryRelease(InventoryReleaseEvent.builder()
                     .orderId(orderId).reason("Cancelled by admin").build());
+            if (refundPayment) {
+                applicationEventPublisher.publishEvent(
+                        new OrderRefundApplicationEvent(this, orderId, order.getPaymentIntentId()));
+            }
         }
 
         applicationEventPublisher.publishEvent(
