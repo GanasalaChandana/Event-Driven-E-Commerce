@@ -25,6 +25,7 @@ const ILLUSTRATIONS: [RegExp, string][] = [
   [/purifier/i, "purifier"],
   [/coffee/i, "coffee"],
   [/yoga|exercise mat/i, "yogamat"],
+  [/dumbbell/i, "dumbbell"],
 ];
 
 function illustrationFor(name: string) {
