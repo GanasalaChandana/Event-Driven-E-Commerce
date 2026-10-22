@@ -21,6 +21,23 @@ A production-grade full-stack e-commerce platform with a **Next.js frontend** an
 
 > Admin credentials are available on request.
 
+### Try it in 2 minutes
+
+1. **Register** at [/register](https://event-driven-e-commerce.vercel.app/register), then browse **Products**.
+2. **Add to cart** — add two or more products (or use **Buy now** on a product page).
+3. Open the **Cart** → **Proceed to checkout**, then enter a delivery address (tick *Save this address* to reuse it next time).
+4. Click **Place order & pay**. You land on Stripe's hosted page — it runs in **test mode**, so no real money moves:
+
+   | Field | Value |
+   |---|---|
+   | Card number | `4242 4242 4242 4242` |
+   | Expiry / CVC | any future date / any 3 digits |
+   | Name / ZIP | anything |
+
+5. You return to a *Payment received* page; **My Orders** shows the order as CONFIRMED with its *Ship to* address.
+6. Cancel an order from an admin account and the stock is restocked and the payment is **refunded automatically**.
+
+
 ---
 
 ## 🤖 AI Integration (MCP Server)
@@ -95,7 +112,8 @@ Built with **Next.js 14**, **Tailwind CSS**, and **shadcn/ui**. Connects to the 
 
 - JWT authentication with role-based access (USER / ADMIN)
 - Product catalog with full-text search and category filtering
-- Shopping cart with multi-item orders and optional Stripe Checkout payments (refunds when a paid order is cancelled)
+- Shopping cart with multi-item orders, a saved address book, and a checkout step with a delivery address on every order
+- Optional Stripe Checkout payments (card details never touch the app), with automatic refunds when a paid order is cancelled
 - Order placement with automatic PENDING → CONFIRMED fulfillment
 - User-initiated order cancellation (PENDING orders only)
 - Admin dashboard: manage all orders, users, inventory, and categories
@@ -109,19 +127,43 @@ Built with **Next.js 14**, **Tailwind CSS**, and **shadcn/ui**. Connects to the 
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    Browser["Next.js frontend<br/>(Vercel)"] -->|REST + JWT| API
+    subgraph API["shopflow-monolith (Spring Boot 3, Render)"]
+        U[user-service<br/>auth, profiles, addresses]
+        P[product-service<br/>catalog, search]
+        O[order-service<br/>orders, payments]
+        I[inventory-service<br/>stock, reservations]
+    end
+    O -- "order created (event)" --> I
+    I -- "stock reserved (event)" --> O
+    O <-->|"Checkout session / webhook / refund"| Stripe[(Stripe)]
+    API --> DB[(PostgreSQL)]
+    API -. "optional" .-> Kafka[(Apache Kafka)]
+    O -->|emails| Resend[Resend]
 ```
-Client
-  │
-  ▼
-shopflow-monolith (Spring Boot 3.x, port 10000)
-  ├── user-service      — registration, login, JWT, profiles
-  ├── product-service   — products, categories, search
-  ├── order-service     — place, cancel, track orders
-  └── inventory-service — stock management with cache
-         │
-         ▼ (optional)
-   Apache Kafka
-   order.created → inventory.reserved → order.confirmed
+
+### Order lifecycle
+
+```mermaid
+sequenceDiagram
+    actor C as Customer
+    participant F as Frontend
+    participant O as Order service
+    participant I as Inventory
+    participant S as Stripe
+    C->>F: Checkout (cart + delivery address)
+    F->>O: POST /orders (items, shippingAddress)
+    O->>I: reserve stock
+    O-->>F: order PENDING
+    F->>O: POST /orders/{id}/checkout
+    O->>S: create Checkout Session
+    S-->>C: hosted payment page (card details)
+    S->>O: webhook checkout.session.completed (signature verified)
+    O->>I: commit stock
+    O-->>C: order CONFIRMED + email
+    Note over O,S: Admin cancels a paid order → stock released + Stripe refund.<br/>Unpaid orders are cancelled automatically after 35 min.
 ```
 
 When Kafka is unavailable (Render free tier), fulfillment runs synchronously via Spring `ApplicationEvent` — the order auto-confirms within seconds.
