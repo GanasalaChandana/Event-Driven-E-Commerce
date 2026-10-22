@@ -21,6 +21,10 @@ const ILLUSTRATIONS: [RegExp, string][] = [
   [/jacket|coat/i, "jacket"],
   [/sneaker|shoe|trainer/i, "sneakers"],
   [/clean code/i, "book"],
+  [/data-intensive|designing data/i, "ddia"],
+  [/purifier/i, "purifier"],
+  [/coffee/i, "coffee"],
+  [/yoga|exercise mat/i, "yogamat"],
 ];
 
 function illustrationFor(name: string) {
