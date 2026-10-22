@@ -11,6 +11,23 @@ const THEMES: Record<string, { icon: LucideIcon; gradient: string }> = {
   "sports & fitness": { icon: Dumbbell, gradient: "from-rose-100 to-pink-200 text-rose-500" },
   fashion: { icon: Shirt, gradient: "from-purple-100 to-fuchsia-200 text-purple-500" },
 };
+// Bundled illustrations (public/products), matched on the product name so they work without any admin setup.
+const ILLUSTRATIONS: [RegExp, string][] = [
+  [/headphone|earbud|headset/i, "headphones"],
+  [/watch/i, "smartwatch"],
+  [/keyboard/i, "keyboard"],
+  [/webcam|web cam/i, "webcam"],
+  [/speaker/i, "speaker"],
+  [/jacket|coat/i, "jacket"],
+  [/sneaker|shoe|trainer/i, "sneakers"],
+  [/clean code/i, "book"],
+];
+
+function illustrationFor(name: string) {
+  const hit = ILLUSTRATIONS.find(([re]) => re.test(name));
+  return hit ? `/products/${hit[1]}.svg` : null;
+}
+
 const FALLBACK = { icon: Package, gradient: "from-slate-100 to-slate-200 text-slate-400" };
 
 /** The product photo, or a category-themed placeholder when there is none (or it fails to load). */
@@ -25,14 +42,17 @@ export default function ProductImage({
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
-  if (product.imageUrl && product.imageUrl !== failedUrl) {
+  // An admin-set photo wins; otherwise a bundled illustration; otherwise a category-themed placeholder
+  const src = product.imageUrl || illustrationFor(product.name);
+
+  if (src && src !== failedUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- admin-supplied URLs from any host
       <img
-        src={product.imageUrl}
+        src={src}
         alt={product.name}
         loading="lazy"
-        onError={() => setFailedUrl(product.imageUrl)}
+        onError={() => setFailedUrl(src)}
         className={`object-cover ${className}`}
       />
     );
