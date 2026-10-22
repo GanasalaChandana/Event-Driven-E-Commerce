@@ -38,6 +38,18 @@ A production-grade full-stack e-commerce platform with a **Next.js frontend** an
 6. Cancel an order from an admin account and the stock is restocked and the payment is **refunded automatically**.
 
 
+### Screenshots
+
+| Browse | Cart |
+|---|---|
+| ![Products](docs/screenshots/1-products.png) | ![Cart](docs/screenshots/2-cart.png) |
+
+| Checkout (delivery address) | Payment received |
+|---|---|
+| ![Checkout](docs/screenshots/3-checkout.png) | ![Payment received](docs/screenshots/4-payment-received.png) |
+
+![My Orders — confirmed order with its delivery address](docs/screenshots/5-my-orders.png)
+
 ---
 
 ## 🤖 AI Integration (MCP Server)
