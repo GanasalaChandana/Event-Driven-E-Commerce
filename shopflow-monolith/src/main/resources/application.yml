@@ -92,6 +92,9 @@ eureka:
 
 
 management:
+  # Traces are only exported when a Zipkin server exists; off by default so nothing retries against localhost:9411
+  tracing:
+    enabled: ${TRACING_ENABLED:false}
   endpoints:
     web:
       exposure:
