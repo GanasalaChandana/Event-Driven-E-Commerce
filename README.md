@@ -559,6 +559,14 @@ Payment is optional. With no Stripe keys configured, orders are confirmed automa
 
 ---
 
+## 🗄️ Database migrations (Flyway)
+
+The monolith's schema is managed by [Flyway](https://flywaydb.org) (`shopflow-monolith/src/main/resources/db/migration`), and Hibernate runs with `ddl-auto: validate`, so the app refuses to start if the entities and the database disagree instead of silently altering tables.
+
+- `V1__baseline_schema.sql` creates the full schema. Every statement is idempotent, so it is a no-op on the original live database (built earlier by `ddl-auto: update`, adopted by Flyway as baseline version 0) and builds everything on a fresh one.
+- To change the schema, add `V2__describe_change.sql` (and so on). **Never edit a migration that has already been applied** — Flyway checksums them and will refuse to start.
+- The microservice modules keep their own migrations; only the monolith uses this folder.
+
 ## Email Notifications
 
 Sent via [Resend](https://resend.com) HTTP API:
