@@ -31,7 +31,7 @@ import static org.awaitility.Awaitility.await;
  * {@code ddl-auto: validate} agreed with it, and that the order flow works end to end on top of it.
  */
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = IntegrationTestSupport.APP_PROPERTIES)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class FreshDatabaseIntegrationTest {
 
     @Container static final PostgreSQLContainer<?> POSTGRES = IntegrationTestSupport.postgres();

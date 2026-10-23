@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * must still pass.
  */
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = IntegrationTestSupport.APP_PROPERTIES)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class LegacyDatabaseIntegrationTest {
 
     @Container

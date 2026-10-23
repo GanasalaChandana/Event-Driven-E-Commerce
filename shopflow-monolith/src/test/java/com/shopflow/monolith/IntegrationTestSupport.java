@@ -26,12 +26,9 @@ final class IntegrationTestSupport {
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        // No Kafka, mail provider, Stripe or tracing backend exists in tests
+        registry.add("jwt.secret", () -> "integration-test-secret-key-that-is-long-enough-for-hs384-signing");
+        registry.add("admin.password", () -> ADMIN_PASSWORD);
+        registry.add("management.tracing.enabled", () -> "false");
     }
-
-    /** Properties for {@code @SpringBootTest}; no Kafka, mail provider or Stripe is available in tests. */
-    static final String[] APP_PROPERTIES = {
-            "jwt.secret=integration-test-secret-key-that-is-long-enough-for-hs384-signing",
-            "admin.password=" + ADMIN_PASSWORD,
-            "management.tracing.enabled=false",
-    };
 }
