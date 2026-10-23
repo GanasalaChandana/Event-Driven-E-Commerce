@@ -567,6 +567,13 @@ The monolith's schema is managed by [Flyway](https://flywaydb.org) (`shopflow-mo
 - To change the schema, add `V2__describe_change.sql` (and so on). **Never edit a migration that has already been applied** — Flyway checksums them and will refuse to start.
 - The microservice modules keep their own migrations; only the monolith uses this folder.
 
+### Integration tests
+
+`mvn verify` also runs integration tests in `shopflow-monolith` ([Testcontainers](https://testcontainers.com): real Postgres 16 + Redis in Docker, needs Docker running; they are skipped automatically without it):
+
+- **Fresh database** — Flyway builds the schema, Hibernate validates it, then a full order is placed, confirmed and restocked on cancel over HTTP; address books are isolated per user.
+- **Legacy database** — a Hibernate-built schema with existing data (the production upgrade path) is adopted by Flyway with no data loss.
+
 ## Email Notifications
 
 Sent via [Resend](https://resend.com) HTTP API:
